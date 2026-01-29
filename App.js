@@ -8,6 +8,7 @@ import SessionScreen from './src/screens/SessionScreen';
 import DebugScreen from './src/screens/DebugScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import AppointmentsScreen from './src/screens/AppointmentsScreen';
+import AppointmentUpdateScreen from './src/screens/AppointmentUpdateScreen';
 import './src/services/LocationTask';
 import { createTable } from './src/db/locationDB';
 
@@ -51,6 +52,11 @@ export default function App() {
               name="Appointments"
               component={AppointmentsScreen}
               options={{ title: 'My Appointments' }}
+            />
+            <Stack.Screen
+              name="AppointmentUpdate"
+              component={AppointmentUpdateScreen}
+              options={{ title: 'Update Appointment' }}
             />
             <Stack.Screen
               name="Debug"
