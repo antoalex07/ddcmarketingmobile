@@ -8,7 +8,9 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to track your work sessions.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to track your work sessions even when the app is in the background.",
         "NSLocationAlwaysUsageDescription": "This app needs access to your location to track your work sessions in the background.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
@@ -31,7 +33,8 @@
             "killServiceOnDestroy": false
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }
