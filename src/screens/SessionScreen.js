@@ -454,6 +454,13 @@ const SessionScreen = ({ navigation }) => {
         </View>
 
         <TouchableOpacity
+          style={styles.appointmentsButton}
+          onPress={() => navigation.navigate('Appointments')}
+        >
+          <Text style={styles.appointmentsButtonText}>View Appointments</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.logoutButton, sessionActive && styles.logoutButtonDisabled]}
           onPress={handleLogout}
           disabled={sessionActive}
@@ -611,6 +618,18 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  appointmentsButton: {
+    backgroundColor: '#3b82f6',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  appointmentsButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
