@@ -14,38 +14,50 @@ import { useAuth } from '../context/AuthContext';
 import { appointmentService } from '../services/AppointmentService';
 
 const AppointmentsScreen = ({ navigation }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [staffDetails, setStaffDetails] = useState(null);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    // console.log('AppointmentsScreen mounted');
+    // console.log('User:', user);
+    // console.log('Token:', token ? 'exists' : 'missing');
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
+      // console.log('Fetching staff details...');
       // Fetch staff details first
       const staffResult = await appointmentService.getStaffDetails(token);
+      // console.log('Staff result:', JSON.stringify(staffResult, null, 2));
 
       if (!staffResult.success) {
+        // console.log('Staff fetch failed:', staffResult.message);
         Alert.alert('Error', staffResult.message);
         setLoading(false);
         return;
       }
 
-      setStaffDetails(staffResult.data);
+      // console.log('Staff data:', staffResult.data);
+      setStaffDetails(staffResult.data.staff);
 
       // Fetch appointments using staff_id
+      // console.log('Fetching appointments for staff_id:', staffResult.data.staff.staff_id);
       const appointmentsResult = await appointmentService.getAppointments(
         token,
-        staffResult.data.staff_id
+        staffResult.data.staff.staff_id
       );
+      // console.log('Appointments result:', JSON.stringify(appointmentsResult, null, 2));
 
       if (appointmentsResult.success) {
-        setAppointments(appointmentsResult.data || []);
+        // console.log('Appointments data:', appointmentsResult.data.appointments);
+        // console.log('Number of appointments:', appointmentsResult.data.appointments?.length || 0);
+        setAppointments(appointmentsResult.data.appointments || []);
       } else {
+        // console.log('Appointments fetch failed:', appointmentsResult.message);
         Alert.alert('Error', appointmentsResult.message);
       }
     } catch (error) {
@@ -111,8 +123,7 @@ const AppointmentsScreen = ({ navigation }) => {
     <TouchableOpacity
       style={styles.appointmentCard}
       onPress={() => {
-        // Navigate to appointment details if needed
-        // navigation.navigate('AppointmentDetail', { appointment: item });
+        navigation.navigate('AppointmentUpdate', { appointment: item });
       }}
     >
       <View style={styles.appointmentHeader}>
@@ -174,6 +185,10 @@ const AppointmentsScreen = ({ navigation }) => {
     );
   }
 
+  // console.log('Render - staffDetails:', staffDetails);
+  // console.log('Render - appointments:', appointments);
+  // console.log('Render - loading:', loading);
+
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
@@ -185,7 +200,7 @@ const AppointmentsScreen = ({ navigation }) => {
               <View style={styles.staffInfoRow}>
                 <Text style={styles.staffInfo}>Code: {staffDetails.staff_code}</Text>
                 {staffDetails.staff_status === 1 && (
-                  <View style={styles.activebadge}>
+                  <View style={styles.activeBadge}>
                     <Text style={styles.activeBadgeText}>Active</Text>
                   </View>
                 )}
