@@ -388,9 +388,22 @@ const SessionScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.userInfoContainer}>
-          <Text style={styles.welcomeText}>Welcome,</Text>
-          <Text style={styles.userName}>{user?.userName}</Text>
-          <Text style={styles.userRole}>Role ID: {user?.roleId}</Text>
+          <View style={styles.userInfoContent}>
+            <View>
+              <Text style={styles.welcomeText}>Welcome,</Text>
+              <Text style={styles.userName}>{user?.userName}</Text>
+              <Text style={styles.userRole}>Role ID: {user?.roleId}</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.logoutButtonTop, sessionActive && styles.logoutButtonTopDisabled]}
+              onPress={handleLogout}
+              disabled={sessionActive}
+            >
+              <Text style={[styles.logoutButtonTopText, sessionActive && styles.logoutButtonTopTextDisabled]}>
+                Logout
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.sessionContainer}>
@@ -461,18 +474,6 @@ const SessionScreen = ({ navigation }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.logoutButton, sessionActive && styles.logoutButtonDisabled]}
-          onPress={handleLogout}
-          disabled={sessionActive}
-        >
-          <Text
-            style={[styles.logoutButtonText, sessionActive && styles.logoutButtonTextDisabled]}
-          >
-            {sessionActive ? 'Logout (Stop session first)' : 'Logout'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={styles.debugButton}
           onPress={() => navigation.navigate('Debug')}
         >
@@ -506,6 +507,29 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  userInfoContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  logoutButtonTop: {
+    backgroundColor: '#ef4444',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  logoutButtonTopDisabled: {
+    backgroundColor: '#fca5a5',
+    opacity: 0.6,
+  },
+  logoutButtonTopText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  logoutButtonTopTextDisabled: {
+    color: '#fff',
+  },
   welcomeText: {
     fontSize: 16,
     color: '#6b7280',
@@ -522,7 +546,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sessionContainer: {
-    flex: 1,
+    marginBottom: 20,
   },
   statusCard: {
     backgroundColor: '#fff',
@@ -601,7 +625,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonContainer: {
-    marginBottom: 20,
+    marginTop: 4,
   },
   button: {
     borderRadius: 8,
@@ -627,33 +651,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   appointmentsButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  logoutButton: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  logoutButtonDisabled: {
-    backgroundColor: '#f3f4f6',
-    borderColor: '#d1d5db',
-    opacity: 0.6,
-  },
-  logoutButtonText: {
-    color: '#6b7280',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  logoutButtonTextDisabled: {
-    color: '#9ca3af',
   },
   debugButton: {
     marginTop: 12,
