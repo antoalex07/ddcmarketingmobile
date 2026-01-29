@@ -1,4 +1,4 @@
-package com.ddcmarketingmobile
+package com.antoalex07.ddcmarketingmobile
 
 import android.os.Build
 import android.os.Bundle

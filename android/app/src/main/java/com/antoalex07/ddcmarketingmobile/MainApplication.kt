@@ -1,4 +1,4 @@
-package com.ddcmarketingmobile
+package com.antoalex07.ddcmarketingmobile
 
 import android.app.Application
 import android.content.res.Configuration

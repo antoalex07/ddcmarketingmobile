@@ -2,6 +2,36 @@
   "expo": {
     "name": "ddcmarketingmobile",
     "slug": "ddcmarketingmobile",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "ios": {
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to track your work sessions.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to track your work sessions even when the app is in the background.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to your location to track your work sessions in the background.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "com.antoalex07.ddcmarketingmobile"
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app needs access to your location to track your work sessions.",
+          "locationAlwaysPermission": "This app needs access to your location to track your work sessions in the background.",
+          "locationWhenInUsePermission": "This app needs access to your location to track your work sessions.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "androidForegroundService": {
+            "notificationTitle": "DDC Marketing",
+            "notificationBody": "Tracking your work session location",
+            "notificationColor": "#2563eb",
+            "killServiceOnDestroy": false
+          }
+        }
+      ]
+    ]
   }
 }
