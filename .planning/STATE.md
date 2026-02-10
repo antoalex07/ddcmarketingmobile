@@ -47,7 +47,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+1. **Fix location data not saving to backend** (api) — Location messages sent but data not persisted in backend database
+   - `.planning/todos/pending/2026-02-10-fix-location-data-not-saving-to-backend.md`
 
 ### Blockers/Concerns
 
