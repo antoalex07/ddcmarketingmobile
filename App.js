@@ -5,18 +5,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import SessionScreen from './src/screens/SessionScreen';
-import DebugScreen from './src/screens/DebugScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import AppointmentsScreen from './src/screens/AppointmentsScreen';
 import AppointmentUpdateScreen from './src/screens/AppointmentUpdateScreen';
 import './src/services/LocationTask';
-import { createTable } from './src/db/locationDB';
+import { createTable as createLocationTable } from './src/db/locationDB';
+import { createTable as createAppointmentTable } from './src/db/appointmentDB';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   useEffect(() => {
-    createTable().catch(err => console.error('Failed to create locations table:', err));
+    createLocationTable();
+    createAppointmentTable();
   }, []);
 
   return (
@@ -57,11 +58,6 @@ export default function App() {
               name="AppointmentUpdate"
               component={AppointmentUpdateScreen}
               options={{ title: 'Update Appointment' }}
-            />
-            <Stack.Screen
-              name="Debug"
-              component={DebugScreen}
-              options={{ title: 'Debug' }}
             />
             <Stack.Screen
               name="Report"
