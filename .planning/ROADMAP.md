@@ -12,7 +12,7 @@ This roadmap adds appointment creation capability to the existing field worker a
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Offline Foundation** - Local storage and sync infrastructure for appointments
+- [x] **Phase 1: Offline Foundation** - Local storage and sync infrastructure for appointments
 - [ ] **Phase 2: Core Appointment Creation** - Complete form workflow with validation
 - [ ] **Phase 3: Client Management** - Search existing clients and add new ones inline
 - [ ] **Phase 4: Sync Visibility & Polish** - Status indicators and conflict resolution
@@ -30,9 +30,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Database layer and sync uploader (appointmentDB + AppointmentUploader)
-- [ ] 01-02-PLAN.md — App integration (DB init, NetInfo auto-sync, merged appointment list with duplicate check before sync)
-- [ ] 01-03-PLAN.md — Appointment creation screen (minimal form saving to local SQLite for OFFLINE-01)
+- [x] 01-01-PLAN.md — Database layer and sync uploader (appointmentDB + AppointmentUploader)
+- [x] 01-02-PLAN.md — App integration (DB init, NetInfo auto-sync, merged appointment list with duplicate check before sync)
+- [x] 01-03-PLAN.md — Appointment creation screen (minimal form saving to local SQLite for OFFLINE-01)
 
 ### Phase 2: Core Appointment Creation
 **Goal**: Workers can create complete appointments with all required details
@@ -84,7 +84,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Offline Foundation | 0/3 | Planned | - |
+| 1. Offline Foundation | 3/3 | ✓ Complete | 2026-02-11 |
 | 2. Core Appointment Creation | 0/TBD | Not started | - |
 | 3. Client Management | 0/TBD | Not started | - |
 | 4. Sync Visibility & Polish | 0/TBD | Not started | - |
