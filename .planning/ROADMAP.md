@@ -27,10 +27,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Appointments created offline save to local database immediately
   2. Appointments sync to backend automatically when connection returns
   3. App continues working if network drops during appointment creation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Database layer and sync uploader (appointmentDB + AppointmentUploader)
+- [ ] 01-02-PLAN.md — App integration (DB init, NetInfo auto-sync, merged appointment list)
 
 ### Phase 2: Core Appointment Creation
 **Goal**: Workers can create complete appointments with all required details
@@ -82,7 +83,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Offline Foundation | 0/TBD | Not started | - |
+| 1. Offline Foundation | 0/2 | Planned | - |
 | 2. Core Appointment Creation | 0/TBD | Not started | - |
 | 3. Client Management | 0/TBD | Not started | - |
 | 4. Sync Visibility & Polish | 0/TBD | Not started | - |
