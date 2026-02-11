@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,12 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../context/AuthContext';
 import { appointmentService } from '../services/AppointmentService';
+import { getAllLocalAppointments, getUnsyncedCount, getUnsyncedAppointments, checkForDuplicates } from '../db/appointmentDB';
+import { uploadUnsyncedAppointments } from '../services/AppointmentUploader';
 
 const AppointmentsScreen = ({ navigation }) => {
   const { token, user } = useAuth();
@@ -19,55 +23,152 @@ const AppointmentsScreen = ({ navigation }) => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unsyncedCount, setUnsyncedCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    // console.log('AppointmentsScreen mounted');
-    // console.log('User:', user);
-    // console.log('Token:', token ? 'exists' : 'missing');
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      // console.log('Fetching staff details...');
-      // Fetch staff details first
+      console.log('Starting to fetch data...');
+      console.log('Token available:', !!token);
       const staffResult = await appointmentService.getStaffDetails(token);
-      // console.log('Staff result:', JSON.stringify(staffResult, null, 2));
 
       if (!staffResult.success) {
-        // console.log('Staff fetch failed:', staffResult.message);
-        Alert.alert('Error', staffResult.message);
+        console.error('Staff fetch failed:', staffResult.message);
+        Alert.alert(
+          'Error Loading Staff',
+          `${staffResult.message}\n\nPlease check the logs for the full URL being called.`
+        );
         setLoading(false);
         return;
       }
 
-      // console.log('Staff data:', staffResult.data);
+      console.log('Staff data received:', staffResult.data);
       setStaffDetails(staffResult.data.staff);
 
-      // Fetch appointments using staff_id
-      // console.log('Fetching appointments for staff_id:', staffResult.data.staff.staff_id);
       const appointmentsResult = await appointmentService.getAppointments(
         token,
         staffResult.data.staff.staff_id
       );
-      // console.log('Appointments result:', JSON.stringify(appointmentsResult, null, 2));
 
       if (appointmentsResult.success) {
-        // console.log('Appointments data:', appointmentsResult.data.appointments);
-        // console.log('Number of appointments:', appointmentsResult.data.appointments?.length || 0);
-        setAppointments(appointmentsResult.data.appointments || []);
+        // Merge backend appointments with local unsynced appointments
+        const backendAppointments = appointmentsResult.data.appointments || [];
+        const localAppointments = await getAllLocalAppointments();
+
+        // Filter local appointments to only show unsynced ones
+        const unsyncedLocal = localAppointments.filter(a => a.synced === 0);
+
+        // Mark local appointments with a _isLocal flag for UI differentiation
+        const markedLocal = unsyncedLocal.map(a => ({ ...a, _isLocal: true }));
+
+        // Merge: backend appointments first, then unsynced local at end
+        const merged = [...backendAppointments, ...markedLocal];
+        setAppointments(merged);
+
+        // Update unsynced count
+        const count = await getUnsyncedCount();
+        setUnsyncedCount(count);
       } else {
-        // console.log('Appointments fetch failed:', appointmentsResult.message);
-        Alert.alert('Error', appointmentsResult.message);
+        console.error('Appointments fetch failed:', appointmentsResult.message);
+
+        // When backend fetch fails (offline), still show local appointments
+        const localAppointments = await getAllLocalAppointments();
+        setAppointments(localAppointments.map(a => ({ ...a, _isLocal: a.synced === 0 })));
+
+        const count = await getUnsyncedCount();
+        setUnsyncedCount(count);
+
+        Alert.alert(
+          'Offline Mode',
+          'Could not load appointments from server. Showing local appointments only.'
+        );
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
-      Alert.alert('Error', 'Failed to load data. Please try again.');
+      console.error('Unexpected error in fetchData:', error);
+      Alert.alert('Error', `Failed to load data: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  }, [token]);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      // Per user decision: check for duplicates before syncing and warn worker
+      const unsynced = await getUnsyncedAppointments();
+      const duplicates = [];
+      for (const appt of unsynced) {
+        const dupes = await checkForDuplicates(
+          appt.appoint_clientautoid,
+          appt.appoint_appointmentdate,
+          appt.appoint_timefrom
+        );
+        // If checkForDuplicates returns matches OTHER than the current appointment
+        if (dupes && dupes.length > 1) {
+          duplicates.push(appt);
+        }
+      }
+
+      if (duplicates.length > 0) {
+        // Warn worker about potential duplicates before proceeding
+        const proceed = await new Promise((resolve) => {
+          Alert.alert(
+            'Possible Duplicates Found',
+            `${duplicates.length} appointment${duplicates.length !== 1 ? 's' : ''} may be duplicates (same client, date, and similar time). Sync anyway?`,
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Sync Anyway', onPress: () => resolve(true) },
+            ]
+          );
+        });
+        if (!proceed) {
+          setSyncing(false);
+          return;
+        }
+      }
+
+      const result = await uploadUnsyncedAppointments(token);
+      if (result.failed > 0) {
+        Alert.alert('Sync Incomplete', `Couldn't sync ${result.failed} appointment${result.failed !== 1 ? 's' : ''}. Will retry later.`);
+      } else if (result.uploaded > 0) {
+        Alert.alert('Sync Complete', `${result.uploaded} appointment${result.uploaded !== 1 ? 's' : ''} synced successfully.`);
+      }
+      fetchData(); // Refresh list
+    } catch (error) {
+      Alert.alert('Sync Error', 'Couldn\'t sync appointments. Check your connection.');
+    } finally {
+      setSyncing(false);
+    }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
+
+  // NetInfo auto-sync listener
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      if (state.isConnected && state.isInternetReachable && !syncing && token) {
+        const count = await getUnsyncedCount();
+        if (count > 0) {
+          setSyncing(true);
+          try {
+            await uploadUnsyncedAppointments(token);
+            // Refresh the list after sync
+            fetchData();
+          } catch (err) {
+            console.error('Auto-sync failed:', err);
+          } finally {
+            setSyncing(false);
+          }
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [token, syncing, fetchData]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -171,6 +272,16 @@ const AppointmentsScreen = ({ navigation }) => {
           </View>
         )}
       </View>
+
+      {item._isLocal && item.retry_count >= 3 ? (
+        <View style={styles.syncFailedBadge}>
+          <Text style={styles.syncFailedText}>Failed to sync</Text>
+        </View>
+      ) : item._isLocal ? (
+        <View style={styles.syncPendingBadge}>
+          <Text style={styles.syncPendingText}>Pending sync</Text>
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -185,34 +296,47 @@ const AppointmentsScreen = ({ navigation }) => {
     );
   }
 
-  // console.log('Render - staffDetails:', staffDetails);
-  // console.log('Render - appointments:', appointments);
-  // console.log('Render - loading:', loading);
-
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
         ListHeaderComponent={
-          staffDetails && (
-            <View style={styles.staffHeader}>
-              <Text style={styles.staffLabel}>Staff Details</Text>
-              <Text style={styles.staffName}>{staffDetails.staff_name}</Text>
-              <View style={styles.staffInfoRow}>
-                <Text style={styles.staffInfo}>Code: {staffDetails.staff_code}</Text>
-                {staffDetails.staff_status === 1 && (
-                  <View style={styles.activeBadge}>
-                    <Text style={styles.activeBadgeText}>Active</Text>
-                  </View>
-                )}
+          <>
+            {staffDetails && (
+              <View style={styles.staffHeader}>
+                <Text style={styles.staffLabel}>Staff Details</Text>
+                <Text style={styles.staffName}>{staffDetails.staff_name}</Text>
+                <View style={styles.staffInfoRow}>
+                  <Text style={styles.staffInfo}>Code: {staffDetails.staff_code}</Text>
+                  {staffDetails.staff_status === 1 && (
+                    <View style={styles.activeBadge}>
+                      <Text style={styles.activeBadgeText}>Active</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.staffContact}>📧 {staffDetails.staff_email}</Text>
+                <Text style={styles.staffContact}>📱 {staffDetails.staff_mobile}</Text>
               </View>
-              <Text style={styles.staffContact}>📧 {staffDetails.staff_email}</Text>
-              <Text style={styles.staffContact}>📱 {staffDetails.staff_mobile}</Text>
-            </View>
-          )
+            )}
+            {unsyncedCount > 0 && (
+              <TouchableOpacity
+                style={[styles.syncButton, syncing && styles.syncButtonDisabled]}
+                onPress={handleManualSync}
+                disabled={syncing}
+              >
+                {syncing ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.syncButtonText}>
+                    Sync {unsyncedCount} Pending Appointment{unsyncedCount !== 1 ? 's' : ''}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
         }
         data={appointments}
         renderItem={renderAppointmentItem}
-        keyExtractor={(item) => item.appoint_id.toString()}
+        keyExtractor={(item) => item._isLocal ? `local-${item.id}` : item.appoint_id.toString()}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -358,6 +482,47 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#9ca3af',
+  },
+  syncButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  syncButtonDisabled: {
+    backgroundColor: '#93c5fd',
+  },
+  syncButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  syncPendingBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  syncPendingText: {
+    fontSize: 11,
+    color: '#92400e',
+    fontWeight: '500',
+  },
+  syncFailedBadge: {
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  syncFailedText: {
+    fontSize: 11,
+    color: '#991b1b',
+    fontWeight: '500',
   },
 });
 
