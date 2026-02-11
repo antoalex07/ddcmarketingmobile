@@ -347,6 +347,12 @@ const AppointmentsScreen = ({ navigation }) => {
           </View>
         }
       />
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('AppointmentCreate')}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -523,6 +529,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#991b1b',
     fontWeight: '500',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fabText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+    lineHeight: 30,
   },
 });
 
