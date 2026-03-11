@@ -65,7 +65,6 @@ export const uploadUnsyncedLocations = async (token) => {
           success = true;
           break;
         } catch (err) {
-          console.error(`Upload attempt ${attempt} failed:`, err.message);
 
           if (attempt < MAX_RETRIES) {
             await delay(RETRY_DELAY_MS * attempt);

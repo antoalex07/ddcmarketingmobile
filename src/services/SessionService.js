@@ -128,7 +128,6 @@ export const sessionService = {
         data: response.data,
       };
     } catch (error) {
-      console.error('Failed to send location data:', error);
       return {
         success: false,
         message: 'Failed to send location data',

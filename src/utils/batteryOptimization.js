@@ -11,7 +11,6 @@ export const checkBatteryOptimization = async () => {
     // This requires a native module - for now we'll use a settings prompt approach
     return { isOptimized: null, canCheck: false };
   } catch (error) {
-    console.error('Failed to check battery optimization:', error);
     return { isOptimized: null, canCheck: false };
   }
 };

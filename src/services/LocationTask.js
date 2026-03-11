@@ -7,7 +7,6 @@ const SESSION_ID_KEY = 'active_session_id';
 
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
-    console.error('Location task error:', error);
     return;
   }
 
@@ -35,17 +34,12 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           inserted = true;
         } catch (err) {
           retries--;
-          console.error(`Failed to insert location (${retries} retries left):`, err);
 
           if (retries > 0) {
             // Wait 500ms before retrying
             await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
-      }
-
-      if (!inserted) {
-        console.error('Failed to insert location after all retries');
       }
     }
   }
