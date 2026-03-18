@@ -19,63 +19,92 @@ import { promptBatteryOptimization } from '../utils/batteryOptimization';
 const SESSION_ID_KEY = 'active_session_id';
 
 const SessionScreen = ({ navigation }) => {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, staffData } = useAuth();
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [loading, setLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // Recovery effect - restore session state on app restart (hybrid approach)
+  const toValidDate = (value) => {
+    if (!value) {
+      return new Date();
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
+  // Recovery effect - restore session state from backend and local fallback
   useEffect(() => {
     const recoverSession = async () => {
+      let storedSessionId = null;
+
       try {
-        const storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
+        storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
 
-        if (!storedSessionId) {
-          return; // No local session to recover
-        }
-
-        // 1. Immediately restore UI state (works offline, instant feedback)
-        setSessionId(parseInt(storedSessionId, 10));
-        setSessionActive(true);
-
-        // 2. Restart tracking if needed
-        const trackingActive = await isTracking();
-        if (!trackingActive) {
-          console.log('Restarting tracking...');
-          await startTracking();
-        }
-
-        // 3. Try to verify with backend and get actual start time
         if (token) {
-          try {
-            const response = await sessionService.getActiveSession(token);
+          const response = await sessionService.getActiveSession(token);
 
-            if (response.success && response.session) {
-              // Session still active on backend, use actual start time
-              setSessionStartTime(new Date(response.session.startedAt));
-              console.log('Session verified with backend, start time restored');
-            } else if (response.success && !response.session) {
-              // Backend says no active session - clean up local state
-              console.log('Backend has no active session, cleaning up...');
-              await AsyncStorage.removeItem(SESSION_ID_KEY);
-              await stopTracking();
-              setSessionActive(false);
-              setSessionId(null);
-              setSessionStartTime(null);
+          if (response.success && response.session) {
+            const activeSessionId = response.session.sessionId;
+            await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
+
+            setSessionId(activeSessionId);
+            setSessionActive(true);
+            setSessionStartTime(toValidDate(response.session.startedAt));
+
+            const trackingActive = await isTracking();
+            if (!trackingActive) {
+              await startTracking();
             }
-          } catch (networkErr) {
-            // Offline - use current time as fallback, will verify later
-            setSessionStartTime(new Date());
-            console.log('Offline, using local recovery with reset timer');
+            return;
           }
-        } else {
-          // No token yet, just use current time
-          setSessionStartTime(new Date());
+
+          if (response.success && !response.session) {
+            await AsyncStorage.removeItem(SESSION_ID_KEY);
+            const trackingActive = await isTracking();
+            if (trackingActive) {
+              await stopTracking();
+            }
+            setSessionActive(false);
+            setSessionId(null);
+            setSessionStartTime(null);
+            setElapsedTime(0);
+            return;
+          }
         }
+
+        if (storedSessionId) {
+          const parsedStoredSessionId = parseInt(storedSessionId, 10);
+          if (!Number.isNaN(parsedStoredSessionId)) {
+            setSessionId(parsedStoredSessionId);
+            setSessionActive(true);
+            setSessionStartTime(new Date());
+
+            const trackingActive = await isTracking();
+            if (!trackingActive) {
+              await startTracking();
+            }
+            return;
+          }
+
+          await AsyncStorage.removeItem(SESSION_ID_KEY);
+        }
+
+        setSessionActive(false);
+        setSessionId(null);
+        setSessionStartTime(null);
+        setElapsedTime(0);
       } catch (error) {
-        console.error('Failed to recover session:', error);
+        if (storedSessionId) {
+          const parsedStoredSessionId = parseInt(storedSessionId, 10);
+          if (!Number.isNaN(parsedStoredSessionId)) {
+            setSessionId(parsedStoredSessionId);
+            setSessionActive(true);
+            setSessionStartTime(new Date());
+          }
+        }
       }
     };
 
@@ -90,13 +119,10 @@ const SessionScreen = ({ navigation }) => {
       try {
         const result = await uploadUnsyncedLocations(token);
         if (result.uploaded > 0) {
-          console.log(`Startup upload: ${result.uploaded} leftover points uploaded`);
         }
         if (result.failed > 0) {
-          console.log(`Startup upload: ${result.failed} points still pending`);
         }
       } catch (error) {
-        console.log('Startup upload failed, will retry later:', error.message);
       }
     };
 
@@ -113,10 +139,8 @@ const SessionScreen = ({ navigation }) => {
       try {
         const result = await uploadUnsyncedLocations(token);
         if (result.uploaded > 0) {
-          console.log(`Periodic upload: ${result.uploaded} points synced`);
         }
       } catch (error) {
-        console.log('Periodic upload failed:', error.message);
       }
     };
 
@@ -207,7 +231,6 @@ const SessionScreen = ({ navigation }) => {
           alertShown = false;
         }
       } catch (error) {
-        console.error('Error checking location status:', error);
       }
     };
 
@@ -266,11 +289,26 @@ const SessionScreen = ({ navigation }) => {
       const result = await sessionService.startSession(token);
 
       if (result.success) {
-        await AsyncStorage.setItem(SESSION_ID_KEY, String(result.sessionId));
+        let activeSession = {
+          sessionId: result.sessionId,
+          startedAt: result.startedAt,
+        };
+
+        const activeSessionResult = await sessionService.getActiveSession(token);
+        if (activeSessionResult.success && activeSessionResult.session) {
+          activeSession = activeSessionResult.session;
+        }
+
+        if (!activeSession.sessionId) {
+          Alert.alert('Error', 'Session started but could not read active session details.');
+          return;
+        }
+
+        await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSession.sessionId));
         await startTracking();
-        setSessionId(result.sessionId);
+        setSessionId(activeSession.sessionId);
         setSessionActive(true);
-        setSessionStartTime(new Date());
+        setSessionStartTime(toValidDate(activeSession.startedAt));
         setElapsedTime(0);
 
         // Prompt for battery optimization on first session
@@ -282,11 +320,29 @@ const SessionScreen = ({ navigation }) => {
 
         Alert.alert('Success', 'Work session started successfully');
       } else {
+        if (result.status === 409) {
+          const activeSessionResponse = await sessionService.getActiveSession(token);
+
+          if (activeSessionResponse.success && activeSessionResponse.session) {
+            const activeSessionId = activeSessionResponse.session.sessionId;
+            await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
+            const trackingActive = await isTracking();
+            if (!trackingActive) {
+              await startTracking();
+            }
+            setSessionId(activeSessionId);
+            setSessionActive(true);
+            setSessionStartTime(toValidDate(activeSessionResponse.session.startedAt));
+            setElapsedTime(0);
+            Alert.alert('Session Active', 'Found your active session. You can now stop it.');
+            return;
+          }
+        }
+
         Alert.alert('Error', result.message);
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to start session. Please try again.');
-      console.error('Start session error:', error);
     } finally {
       setLoading(false);
     }
@@ -313,7 +369,6 @@ const SessionScreen = ({ navigation }) => {
 
               // 2. Upload all pending points
               const uploadResult = await uploadUnsyncedLocations(token);
-              console.log('Upload result:', uploadResult);
 
               // 3. Mark session complete on backend
               const result = await sessionService.stopSession(token);
@@ -339,7 +394,6 @@ const SessionScreen = ({ navigation }) => {
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to stop session. Please try again.');
-              console.error('Stop session error:', error);
             } finally {
               setLoading(false);
             }
@@ -389,10 +443,26 @@ const SessionScreen = ({ navigation }) => {
       <View style={styles.content}>
         <View style={styles.userInfoContainer}>
           <View style={styles.userInfoContent}>
-            <View>
+            <View style={styles.userInfoDetails}>
               <Text style={styles.welcomeText}>Welcome,</Text>
-              <Text style={styles.userName}>{user?.userName}</Text>
-              <Text style={styles.userRole}>Role ID: {user?.roleId}</Text>
+              <Text style={styles.userName}>
+                {staffData?.staff_name || user?.userName}
+              </Text>
+              {staffData ? (
+                <>
+                  {staffData.staff_email ? (
+                    <Text style={styles.userMeta}>✉  {staffData.staff_email}</Text>
+                  ) : null}
+                  {staffData.staff_phone ? (
+                    <Text style={styles.userMeta}>📞  {staffData.staff_phone}</Text>
+                  ) : null}
+                  {staffData.staff_region ? (
+                    <Text style={styles.userMeta}>📍  {staffData.staff_region}{staffData.staff_area ? ` · ${staffData.staff_area}` : ''}</Text>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={styles.userRole}>Role ID: {user?.roleId}</Text>
+              )}
             </View>
             <TouchableOpacity
               style={[styles.logoutButtonTop, sessionActive && styles.logoutButtonTopDisabled]}
@@ -512,6 +582,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  userInfoDetails: {
+    flex: 1,
+    marginRight: 12,
+  },
   logoutButtonTop: {
     backgroundColor: '#ef4444',
     borderRadius: 6,
@@ -543,6 +617,11 @@ const styles = StyleSheet.create({
   userRole: {
     fontSize: 14,
     color: '#9ca3af',
+    marginTop: 4,
+  },
+  userMeta: {
+    fontSize: 13,
+    color: '#6b7280',
     marginTop: 4,
   },
   sessionContainer: {

@@ -1,9 +1,11 @@
 {
   "expo": {
-    "name": "ddcmarketingmobile",
+    "name": "DDC Marketing",
     "slug": "ddcmarketingmobile",
     "version": "1.0.0",
+    "icon": "./assets/branding/icon.png",
     "ios": {
+      "icon": "./assets/branding/icon.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to track your work sessions.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to track your work sessions even when the app is in the background.",
@@ -14,7 +16,16 @@
       }
     },
     "android": {
-      "package": "com.antoalex07.ddcmarketingmobile"
+      "package": "com.antoalex07.ddcmarketingmobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/adaptive-icon.png",
+        "backgroundColor": "#0f4c81"
+      }
+    },
+    "splash": {
+      "image": "./assets/branding/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f8fafc"
     },
     "plugins": [
       "expo-sqlite",

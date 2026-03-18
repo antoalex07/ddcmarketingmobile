@@ -2,6 +2,21 @@ package com.antoalex07.ddcmarketingmobile
 
 import android.app.Application
 import android.content.res.Configuration
+import android.os.Build
+import android.os.Process
+import android.util.Log
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import java.net.HttpURLConnection
+import java.net.URL
+import java.nio.charset.StandardCharsets
+import kotlin.concurrent.thread
+import kotlin.random.Random
+import org.json.JSONArray
+import org.json.JSONObject
 
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -17,6 +32,15 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
 class MainApplication : Application(), ReactApplication {
+  companion object {
+    private const val CRASH_LOG_FILE_NAME = "native_crash_logs.jsonl"
+    private const val MAX_CRASH_LOG_ENTRIES = 100
+    private const val NATIVE_CRASH_UPLOAD_URL = "http://ddcpharmacy.com/api/logs/mobile-native-crash/bulk"
+    private const val NATIVE_CRASH_UPLOAD_CONNECT_TIMEOUT_MS = 10000
+    private const val NATIVE_CRASH_UPLOAD_READ_TIMEOUT_MS = 10000
+    private const val DEVICE_INSTALLATION_ID_PREFS = "native_crash_logger"
+    private const val DEVICE_INSTALLATION_ID_KEY = "device_installation_id"
+  }
 
   override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
       this,
@@ -38,8 +62,185 @@ class MainApplication : Application(), ReactApplication {
   override val reactHost: ReactHost
     get() = ReactNativeHostWrapper.createReactHost(applicationContext, reactNativeHost)
 
+  private fun isoNow(): String {
+    val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+    formatter.timeZone = TimeZone.getTimeZone("UTC")
+    return formatter.format(Date())
+  }
+
+  private fun jsonEscape(value: String): String {
+    return value
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+      .replace("\t", "\\t")
+  }
+
+  private fun appendCrashLogLine(line: String) {
+    try {
+      val crashFile = File(filesDir, CRASH_LOG_FILE_NAME)
+      val existingLines = if (crashFile.exists()) crashFile.readLines() else emptyList()
+      val mergedLines = (existingLines + line).takeLast(MAX_CRASH_LOG_ENTRIES)
+      val output = if (mergedLines.isEmpty()) "" else mergedLines.joinToString("\n") + "\n"
+      crashFile.writeText(output)
+    } catch (error: Exception) {
+      Log.e("MainApplication", "Failed to append native crash log", error)
+    }
+  }
+
+  private fun persistNativeCrash(thread: Thread, throwable: Throwable) {
+    val stack = jsonEscape(Log.getStackTraceString(throwable))
+    val message = jsonEscape(throwable.message ?: "Unknown native crash")
+    val threadName = jsonEscape(thread.name)
+    val errorName = jsonEscape(throwable.javaClass.name)
+    val payload = "{\"timestamp\":\"${isoNow()}\",\"platform\":\"android\",\"type\":\"uncaught_exception\",\"is_fatal\":true,\"thread\":\"$threadName\",\"name\":\"$errorName\",\"message\":\"$message\",\"stack\":\"$stack\"}"
+    appendCrashLogLine(payload)
+  }
+
+  private fun getOrCreateDeviceInstallationId(): String {
+    val prefs = getSharedPreferences(DEVICE_INSTALLATION_ID_PREFS, MODE_PRIVATE)
+    val existingId = prefs.getString(DEVICE_INSTALLATION_ID_KEY, null)
+
+    if (!existingId.isNullOrBlank()) {
+      return existingId
+    }
+
+    val generatedId = "android-${System.currentTimeMillis()}-${Random.nextInt(100000, 999999)}"
+    prefs.edit().putString(DEVICE_INSTALLATION_ID_KEY, generatedId).apply()
+    return generatedId
+  }
+
+  private fun buildNativeCrashUploadPayload(lines: List<String>): String {
+    val logs = JSONArray()
+
+    for (line in lines) {
+      if (line.isBlank()) {
+        continue
+      }
+
+      try {
+        logs.put(JSONObject(line))
+      } catch (_: Exception) {
+        val fallback = JSONObject()
+        fallback.put("timestamp", isoNow())
+        fallback.put("platform", "android")
+        fallback.put("type", "raw_line")
+        fallback.put("is_fatal", true)
+        fallback.put("message", line)
+        logs.put(fallback)
+      }
+    }
+
+    val payload = JSONObject()
+    payload.put("platform", "android")
+    payload.put("package_name", packageName)
+    payload.put("app_version", BuildConfig.VERSION_NAME)
+    payload.put("app_build", BuildConfig.VERSION_CODE)
+    payload.put("device_installation_id", getOrCreateDeviceInstallationId())
+    payload.put("device_model", Build.MODEL ?: "unknown")
+    payload.put("os_version", Build.VERSION.RELEASE ?: "unknown")
+    payload.put("logs", logs)
+
+    return payload.toString()
+  }
+
+  private fun uploadCrashPayload(payload: String): Boolean {
+    var connection: HttpURLConnection? = null
+
+    return try {
+      connection = (URL(NATIVE_CRASH_UPLOAD_URL).openConnection() as HttpURLConnection).apply {
+        requestMethod = "POST"
+        connectTimeout = NATIVE_CRASH_UPLOAD_CONNECT_TIMEOUT_MS
+        readTimeout = NATIVE_CRASH_UPLOAD_READ_TIMEOUT_MS
+        doOutput = true
+        setRequestProperty("Content-Type", "application/json")
+        setRequestProperty("Accept", "application/json")
+      }
+
+      connection.outputStream.use { outputStream ->
+        outputStream.write(payload.toByteArray(StandardCharsets.UTF_8))
+        outputStream.flush()
+      }
+
+      val statusCode = connection.responseCode
+      if (statusCode !in 200..299) {
+        false
+      } else {
+        val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
+        if (responseBody.isBlank()) {
+          true
+        } else {
+          try {
+            JSONObject(responseBody).optBoolean("success", true)
+          } catch (_: Exception) {
+            true
+          }
+        }
+      }
+    } catch (error: Exception) {
+      Log.w("MainApplication", "Failed to upload native crash logs", error)
+      false
+    } finally {
+      connection?.disconnect()
+    }
+  }
+
+  private fun uploadPendingNativeCrashLogs() {
+    try {
+      val crashFile = File(filesDir, CRASH_LOG_FILE_NAME)
+      if (!crashFile.exists()) {
+        return
+      }
+
+      val lines = crashFile
+        .readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+
+      if (lines.isEmpty()) {
+        return
+      }
+
+      val payload = buildNativeCrashUploadPayload(lines)
+      val uploaded = uploadCrashPayload(payload)
+
+      if (uploaded) {
+        crashFile.delete()
+      }
+    } catch (error: Exception) {
+      Log.w("MainApplication", "Native crash log upload cycle failed", error)
+    }
+  }
+
+  private fun uploadPendingNativeCrashLogsAsync() {
+    thread(start = true, name = "native-crash-upload") {
+      uploadPendingNativeCrashLogs()
+    }
+  }
+
+  private fun installNativeCrashLogging() {
+    val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+
+    Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+      try {
+        persistNativeCrash(thread, throwable)
+      } catch (_: Exception) {
+      }
+
+      if (defaultHandler != null) {
+        defaultHandler.uncaughtException(thread, throwable)
+      } else {
+        Process.killProcess(Process.myPid())
+        kotlin.system.exitProcess(10)
+      }
+    }
+  }
+
   override fun onCreate() {
     super.onCreate()
+    installNativeCrashLogging()
+    uploadPendingNativeCrashLogsAsync()
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {

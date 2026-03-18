@@ -8,8 +8,11 @@ import SessionScreen from './src/screens/SessionScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import AppointmentsScreen from './src/screens/AppointmentsScreen';
 import AppointmentUpdateScreen from './src/screens/AppointmentUpdateScreen';
+import AppointmentClientScreen from './src/screens/AppointmentClientScreen';
 import AppointmentCreateScreen from './src/screens/AppointmentCreateScreen';
+import DebugScreen from './src/screens/DebugScreen';
 import './src/services/LocationTask';
+import { errorLogService } from './src/services/errorLogService';
 import { createTable as createLocationTable } from './src/db/locationDB';
 import { createTable as createAppointmentTable } from './src/db/appointmentDB';
 
@@ -17,6 +20,8 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   useEffect(() => {
+    errorLogService.installGlobalErrorHandler();
+    errorLogService.flushPendingLogs();
     createLocationTable();
     createAppointmentTable();
   }, []);
@@ -61,9 +66,19 @@ export default function App() {
               options={{ title: 'Update Appointment' }}
             />
             <Stack.Screen
+              name="AppointmentClient"
+              component={AppointmentClientScreen}
+              options={{ title: 'Select Client' }}
+            />
+            <Stack.Screen
               name="AppointmentCreate"
               component={AppointmentCreateScreen}
               options={{ title: 'New Appointment' }}
+            />
+            <Stack.Screen
+              name="Debug"
+              component={DebugScreen}
+              options={{ title: 'Debug' }}
             />
             <Stack.Screen
               name="Report"

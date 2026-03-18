@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { appointmentService } from '../services/AppointmentService';
 
 const AppointmentUpdateScreen = ({ route, navigation }) => {
   const { appointment } = route.params;
@@ -45,10 +46,8 @@ const AppointmentUpdateScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const statusOptions = [
-    { value: 0, label: 'Cancelled', color: '#ef4444' },
-    { value: 1, label: 'Scheduled', color: '#3b82f6' },
-    { value: 2, label: 'Completed', color: '#10b981' },
-    { value: 3, label: 'In Progress', color: '#f59e0b' },
+    { value: 0, label: 'Pending', color: '#f59e0b' },
+    { value: 1, label: 'Completed', color: '#10b981' },
   ];
 
   const formatDate = (date) => {
@@ -127,26 +126,30 @@ const AppointmentUpdateScreen = ({ route, navigation }) => {
     setLoading(true);
 
     try {
-      // TODO: Replace with actual API endpoint
-      const response = await fetch('YOUR_API_BASE_URL/appointment/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          appoint_id: appointment.appoint_id,
-          appoint_followupdate: followUpDate ? formatDate(followUpDate) : null,
-          appoint_followuptimefrom: followUpTimeFrom || null,
-          appoint_followuptimeto: followUpTimeTo || null,
-          appoint_update: meetingNotes || null,
-          appoint_status: status,
-        }),
-      });
+      // Build payload with only fields that have values
+      const payload = {
+        appoint_id: appointment.appoint_id,
+        appoint_status: status,
+      };
 
-      const result = await response.json();
+      // Only add optional fields if they have actual values
+      if (followUpDate) {
+        payload.appoint_followupdate = formatDate(followUpDate);
+      }
+      if (followUpTimeFrom) {
+        payload.appoint_followuptimefrom = followUpTimeFrom;
+      }
+      if (followUpTimeTo) {
+        payload.appoint_followuptimeto = followUpTimeTo;
+      }
+      if (meetingNotes && meetingNotes.trim()) {
+        payload.appoint_update = meetingNotes.trim();
+      }
 
-      if (result.success || result.status === 'Success') {
+      console.log('Submitting appointment update with payload:', payload);
+      const result = await appointmentService.updateAppointment(token, payload);
+
+      if (result.success) {
         Alert.alert('Success', 'Appointment updated successfully', [
           {
             text: 'OK',
@@ -154,11 +157,12 @@ const AppointmentUpdateScreen = ({ route, navigation }) => {
           },
         ]);
       } else {
+        console.error('Update failed:', result.message);
         Alert.alert('Error', result.message || 'Failed to update appointment');
       }
     } catch (error) {
-      console.error('Error updating appointment:', error);
-      Alert.alert('Error', 'Failed to update appointment. Please try again.');
+      console.error('Unexpected error during update:', error);
+      Alert.alert('Error', `Failed to update appointment: ${error.message || 'Please try again.'}`);
     } finally {
       setLoading(false);
     }

@@ -2,77 +2,87 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { insertAppointment } from '../db/appointmentDB';
+import { appointmentService } from '../services/AppointmentService';
 
-const AppointmentCreateScreen = ({ navigation }) => {
-  const { user } = useAuth();
+const CLIENT_TYPE_LABELS = { 0: 'Doctor', 1: 'Hospital', 2: 'Clinic' };
 
-  const [clientName, setClientName] = useState('');
-  const [clientType, setClientType] = useState('doctor');
-  const [appointmentDate, setAppointmentDate] = useState('');
-  const [timeFrom, setTimeFrom] = useState('');
-  const [timeTo, setTimeTo] = useState('');
-  const [notes, setNotes] = useState('');
+const AppointmentCreateScreen = ({ navigation, route }) => {
+  const { user, token, staffId, staffData } = useAuth();
+  const { clientType, clientId, clientName } = route.params || {};
+
+  // Date picker state
+  const [appointmentDate, setAppointmentDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Time picker state
+  const [timeFromDate, setTimeFromDate] = useState(null);
+  const [timeToDate, setTimeToDate] = useState(null);
+  const [showTimeFromPicker, setShowTimeFromPicker] = useState(false);
+  const [showTimeToPicker, setShowTimeToPicker] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
-  const clientTypeOptions = [
-    { value: 'doctor', label: 'Doctor' },
-    { value: 'clinic', label: 'Clinic' },
-    { value: 'hospital', label: 'Hospital' },
-  ];
+  const formatDateDisplay = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const formatTimeDisplay = (date) => {
+    if (!date) return '';
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+  };
 
   const handleCreate = async () => {
-    // Basic validation: all required fields must be filled
-    if (!clientName.trim() || !appointmentDate.trim() || !timeFrom.trim() || !timeTo.trim()) {
-      Alert.alert('Missing Information', 'Please fill in all required fields (Client Name, Date, Time From, Time To).');
+    if (!timeFromDate || !timeToDate) {
+      Alert.alert('Missing Information', 'Please select Time From and Time To.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const appointmentData = {
-        appoint_userid: user?.userid || user?.id,
-        appoint_staffname: user?.staffname || user?.name || '',
-        appoint_assigneduserid: user?.userid || user?.id,
-        appoint_assignedstaffname: user?.staffname || user?.name || '',
-        appoint_clientname: clientName.trim(),
-        appoint_clienttype: clientType,
-        appoint_clientautoid: 0,    // No client ID in Phase 1, Phase 2 adds client selection
-        appoint_clientaddress: '',   // Phase 2 adds address from client record
-        appoint_appointmentdate: appointmentDate.trim(),
-        appoint_timefrom: timeFrom.trim(),
-        appoint_timeto: timeTo.trim(),
-        appoint_notes: notes.trim(),
-        appoint_status: 1,           // 1 = Scheduled
-        appoint_crtdby: user?.staffname || user?.name || '',
-        appoint_crton: new Date().toISOString(),
+      const resolvedStaffId = staffId ?? user?.userId;
+      const resolvedStaffName = staffData?.staff_name || user?.userName || '';
+
+      const payload = {
+        staff_id: resolvedStaffId,
+        staff_name: resolvedStaffName,
+        client_type: clientType,
+        client_id: clientId,
+        client_name: clientName,
+        appointment_date: formatDateDisplay(appointmentDate),
+        time_from: formatTimeDisplay(timeFromDate),
+        time_to: formatTimeDisplay(timeToDate),
+        userid: user?.userId,
+        assigned_userid: resolvedStaffId,
+        assigned_staffname: resolvedStaffName,
       };
 
-      await insertAppointment(appointmentData);
+      const result = await appointmentService.createAppointment(token, payload);
 
-      Alert.alert(
-        'Success',
-        'Appointment created! It will sync when you\'re online.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      if (result.success) {
+        Alert.alert('Success', 'Appointment created successfully!', [
+          { text: 'OK', onPress: () => navigation.navigate('Appointments') },
+        ]);
+      } else {
+        Alert.alert('Error', result.message || 'Failed to create appointment');
+      }
     } catch (error) {
-      console.error('Error creating appointment:', error);
-      Alert.alert('Error', 'Couldn\'t save appointment. Please try again.');
+      Alert.alert('Error', "Couldn't save appointment. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -81,96 +91,105 @@ const AppointmentCreateScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Client Name */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Client Name *</Text>
-          <TextInput
-            style={styles.input}
-            value={clientName}
-            onChangeText={setClientName}
-            placeholder="Enter client name"
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
 
-        {/* Client Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Client Type *</Text>
-          <View style={styles.clientTypeGrid}>
-            {clientTypeOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.clientTypeOption,
-                  clientType === option.value && styles.clientTypeOptionActive,
-                ]}
-                onPress={() => setClientType(option.value)}
-              >
-                <Text
-                  style={[
-                    styles.clientTypeOptionText,
-                    clientType === option.value && styles.clientTypeOptionTextActive,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {/* Client Summary Card (read-only) */}
+        <View style={styles.clientCard}>
+          <Text style={styles.clientCardLabel}>Client</Text>
+          <View style={styles.clientCardRow}>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>
+                {CLIENT_TYPE_LABELS[clientType] ?? '—'}
+              </Text>
+            </View>
+            <Text style={styles.clientCardName}>{clientName ?? '—'}</Text>
           </View>
         </View>
 
         {/* Appointment Date */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Appointment Date *</Text>
-          <TextInput
-            style={styles.input}
-            value={appointmentDate}
-            onChangeText={setAppointmentDate}
-            placeholder="YYYY-MM-DD (e.g., 2026-02-15)"
-            placeholderTextColor="#9ca3af"
-          />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>{formatDateDisplay(appointmentDate)}</Text>
+            <Text style={styles.dateButtonIcon}>📅</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={appointmentDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={new Date()}
+              onChange={(event, date) => {
+                setShowDatePicker(Platform.OS === 'ios');
+                if (date) setAppointmentDate(date);
+              }}
+            />
+          )}
         </View>
 
         {/* Time From */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Time From *</Text>
-          <TextInput
-            style={styles.input}
-            value={timeFrom}
-            onChangeText={setTimeFrom}
-            placeholder="HH:MM (e.g., 09:00)"
-            placeholderTextColor="#9ca3af"
-          />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowTimeFromPicker(true)}
+          >
+            <Text style={timeFromDate ? styles.dateButtonText : styles.timePlaceholder}>
+              {timeFromDate ? formatTimeDisplay(timeFromDate) : 'Select start time'}
+            </Text>
+            <Text style={styles.dateButtonIcon}>🕐</Text>
+          </TouchableOpacity>
+          {showTimeFromPicker && (
+            <DateTimePicker
+              value={timeFromDate || new Date()}
+              mode="time"
+              is24Hour
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(event, date) => {
+                setShowTimeFromPicker(Platform.OS === 'ios');
+                if (date) setTimeFromDate(date);
+              }}
+            />
+          )}
         </View>
 
         {/* Time To */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Time To *</Text>
-          <TextInput
-            style={styles.input}
-            value={timeTo}
-            onChangeText={setTimeTo}
-            placeholder="HH:MM (e.g., 10:00)"
-            placeholderTextColor="#9ca3af"
-          />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowTimeToPicker(true)}
+          >
+            <Text style={timeToDate ? styles.dateButtonText : styles.timePlaceholder}>
+              {timeToDate ? formatTimeDisplay(timeToDate) : 'Select end time'}
+            </Text>
+            <Text style={styles.dateButtonIcon}>🕐</Text>
+          </TouchableOpacity>
+          {showTimeToPicker && (
+            <DateTimePicker
+              value={timeToDate || new Date()}
+              mode="time"
+              is24Hour
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(event, date) => {
+                setShowTimeToPicker(Platform.OS === 'ios');
+                if (date) setTimeToDate(date);
+              }}
+            />
+          )}
         </View>
 
-        {/* Notes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Notes (optional)</Text>
-          <TextInput
-            style={styles.textArea}
-            multiline
-            numberOfLines={4}
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Add any notes about this appointment..."
-            placeholderTextColor="#9ca3af"
-            textAlignVertical="top"
-          />
+        {/* Staff info (informational, not editable) */}
+        <View style={styles.staffInfoCard}>
+          <Text style={styles.staffInfoLabel}>Assigned Staff</Text>
+          <Text style={styles.staffInfoValue}>
+            {staffData?.staff_name || user?.userName || '—'}
+          </Text>
         </View>
 
-        {/* Submit Button */}
+        {/* Submit */}
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonDisabled]}
           onPress={handleCreate}
@@ -197,15 +216,59 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 40,
+  },
+  clientCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  clientCardLabel: {
+    fontSize: 12,
+    color: '#9ca3af',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  clientCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  typeBadge: {
+    backgroundColor: '#dbeafe',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  typeBadgeText: {
+    color: '#1d4ed8',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  clientCardName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f2937',
+    flex: 1,
   },
   section: {
     marginBottom: 20,
   },
   sectionLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   input: {
     backgroundColor: '#fff',
@@ -216,50 +279,56 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  textArea: {
+  dateButton: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#1f2937',
+    padding: 14,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    minHeight: 100,
-  },
-  clientTypeGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  clientTypeOption: {
-    flex: 1,
-    minWidth: '30%',
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 12,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  clientTypeOptionActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+  dateButtonText: {
+    fontSize: 15,
+    color: '#1f2937',
+    fontWeight: '500',
   },
-  clientTypeOptionText: {
-    fontSize: 14,
+  dateButtonIcon: {
+    fontSize: 18,
+  },
+  timePlaceholder: {
+    fontSize: 15,
+    color: '#9ca3af',
+    fontWeight: '500',
+  },
+  staffInfoCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  staffInfoLabel: {
+    fontSize: 12,
+    color: '#9ca3af',
     fontWeight: '600',
-    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  clientTypeOptionTextActive: {
-    color: '#fff',
+  staffInfoValue: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '600',
   },
   submitButton: {
     backgroundColor: '#2563eb',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    marginTop: 8,
   },
   submitButtonDisabled: {
     opacity: 0.5,

@@ -9,7 +9,6 @@ const getDatabase = async () => {
   try {
     if (!db) {
       db = await SQLite.openDatabaseAsync(DATABASE_NAME);
-      console.log('Database opened successfully');
     }
 
     if (!tableCreated && db) {
@@ -27,12 +26,10 @@ const getDatabase = async () => {
         );
       `);
       tableCreated = true;
-      console.log('Table created successfully');
     }
 
     return db;
   } catch (error) {
-    console.error('Database initialization error:', error);
     // Reset state to allow retry
     db = null;
     tableCreated = false;
@@ -68,11 +65,6 @@ export const insertPoint = async (point) => {
     );
     return result.lastInsertRowId;
   } catch (error) {
-    console.error('Insert point error:', {
-      message: error.message,
-      sessionId: point.session_id,
-      hasDatabase: !!db
-    });
     throw error;
   }
 };

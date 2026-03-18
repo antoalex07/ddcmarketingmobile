@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/AuthService';
+import { appointmentService } from '../services/AppointmentService';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, setStaffInfo } = useAuth();
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -32,14 +33,21 @@ const LoginScreen = ({ navigation }) => {
       const result = await authService.login(username, password);
 
       if (result.success) {
-        await login(result.data.user, result.data.token);
+        const { user, token } = result.data;
+        await login(user, token);
+
+        // Fetch and cache staff details using the logged-in userId
+        const staffResult = await appointmentService.getStaffDetails(token);
+        if (staffResult.success && staffResult.data?.staff) {
+          await setStaffInfo(staffResult.data.staff);
+        }
+
         navigation.replace('Session');
       } else {
         Alert.alert('Login Failed', result.message);
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-      console.error('Login error:', error);
     } finally {
       setLoading(false);
     }

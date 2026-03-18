@@ -193,13 +193,9 @@ const AppointmentsScreen = ({ navigation }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 0:
-        return '#ef4444'; // Red - Cancelled/Inactive
+        return '#f59e0b'; // Orange - Pending
       case 1:
-        return '#3b82f6'; // Blue - Scheduled
-      case 2:
         return '#10b981'; // Green - Completed
-      case 3:
-        return '#f59e0b'; // Orange - In Progress
       default:
         return '#6b7280'; // Gray - Unknown
     }
@@ -208,13 +204,9 @@ const AppointmentsScreen = ({ navigation }) => {
   const getStatusText = (status) => {
     switch (status) {
       case 0:
-        return 'Cancelled';
+        return 'Pending';
       case 1:
-        return 'Scheduled';
-      case 2:
         return 'Completed';
-      case 3:
-        return 'In Progress';
       default:
         return 'Unknown';
     }
@@ -349,7 +341,7 @@ const AppointmentsScreen = ({ navigation }) => {
       />
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('AppointmentCreate')}
+        onPress={() => navigation.navigate('AppointmentClient')}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>

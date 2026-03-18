@@ -14,15 +14,22 @@ import {
   getUnsyncedPoints,
   markAsSynced
 } from '../db/locationDB';
+import { nativeCrashLogService } from '../services/nativeCrashLogService';
 
 const DATABASE_NAME = 'locations.db';
 
 const DebugScreen = () => {
   const [log, setLog] = useState([]);
   const [points, setPoints] = useState([]);
+  const [nativeCrashLogs, setNativeCrashLogs] = useState([]);
+  const [nativeCrashLogPath, setNativeCrashLogPath] = useState('');
 
   useEffect(() => {
     initDB();
+    const logPathResult = nativeCrashLogService.getLogFilePath();
+    if (logPathResult.success) {
+      setNativeCrashLogPath(logPathResult.path);
+    }
   }, []);
 
   const addLog = (message) => {
@@ -142,6 +149,41 @@ const DebugScreen = () => {
     setLog([]);
   };
 
+  const readNativeCrashLogs = async () => {
+    try {
+      const result = await nativeCrashLogService.readLogs();
+
+      if (!result.success) {
+        addLog(`Native crash read error: ${result.message}`);
+        return;
+      }
+
+      setNativeCrashLogs(result.data);
+      if (result.path) {
+        setNativeCrashLogPath(result.path);
+      }
+      addLog(`Read ${result.data.length} native crash logs`);
+    } catch (error) {
+      addLog(`Native crash read error: ${error.message}`);
+    }
+  };
+
+  const clearNativeCrashLogs = async () => {
+    try {
+      const result = await nativeCrashLogService.clearLogs();
+
+      if (!result.success) {
+        addLog(`Native crash clear error: ${result.message}`);
+        return;
+      }
+
+      setNativeCrashLogs([]);
+      addLog('Cleared native crash logs');
+    } catch (error) {
+      addLog(`Native crash clear error: ${error.message}`);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Debug Screen</Text>
@@ -170,6 +212,15 @@ const DebugScreen = () => {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.button} onPress={readNativeCrashLogs}>
+          <Text style={styles.buttonText}>Read Crashes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearNativeCrashLogs}>
+          <Text style={styles.buttonText}>Clear Crashes</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Log</Text>
@@ -192,6 +243,26 @@ const DebugScreen = () => {
               #{point.id} | S:{point.session_id} | {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
             </Text>
           ))}
+        </ScrollView>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Native Crash Logs ({nativeCrashLogs.length})</Text>
+        {nativeCrashLogPath ? (
+          <Text style={styles.metaText} numberOfLines={1}>
+            {nativeCrashLogPath}
+          </Text>
+        ) : null}
+        <ScrollView style={styles.pointsContainer}>
+          {nativeCrashLogs.length === 0 ? (
+            <Text style={styles.emptyText}>No native crash logs found.</Text>
+          ) : (
+            nativeCrashLogs.map((entry, index) => (
+              <Text key={index} style={styles.pointText}>
+                [{entry.timestamp || 'unknown'}] {entry.name || entry.type || 'Crash'}: {entry.message || 'No message'}
+              </Text>
+            ))
+          )}
         </ScrollView>
       </View>
     </View>
@@ -273,6 +344,15 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 11,
     marginBottom: 2
+  },
+  metaText: {
+    color: '#9ca3af',
+    fontSize: 11,
+    marginBottom: 6
+  },
+  emptyText: {
+    color: '#9ca3af',
+    fontSize: 12
   }
 });
 
