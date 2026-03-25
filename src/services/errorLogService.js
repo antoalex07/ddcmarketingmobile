@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { API_BASE_URL, ERROR_LOG_ENDPOINT } from '../config/apiConfig';
+import { tokenStorage } from './tokenStorage';
 
 const PENDING_ERROR_LOGS_KEY = 'pending_error_logs';
 const DEVICE_INSTALLATION_ID_KEY = 'device_installation_id';
@@ -168,7 +169,7 @@ const flushPendingLogsInternal = async () => {
       };
     }
 
-    const token = await AsyncStorage.getItem('token');
+    const token = await tokenStorage.getAccessToken();
     if (!token) {
       return {
         success: false,

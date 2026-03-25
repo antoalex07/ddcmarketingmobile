@@ -33,8 +33,8 @@ const LoginScreen = ({ navigation }) => {
       const result = await authService.login(username, password);
 
       if (result.success) {
-        const { user, token } = result.data;
-        await login(user, token);
+        const { user, token, refreshToken } = result.data;
+        await login(user, token, refreshToken);
 
         // Fetch and cache staff details using the logged-in userId
         const staffResult = await appointmentService.getStaffDetails(token);

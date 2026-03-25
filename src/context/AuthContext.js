@@ -1,6 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { errorLogService } from '../services/errorLogService';
+import { tokenStorage } from '../services/tokenStorage';
+import { authService } from '../services/AuthService';
+import { setApiAuthFailureHandler } from '../config/api';
 
 const AuthContext = createContext();
 
@@ -18,11 +21,30 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [staffData, setStaffData] = useState(null);
 
+  const clearAuthState = () => {
+    setToken(null);
+    setUser(null);
+    setStaffData(null);
+  };
+
+  const clearAuthStorage = async () => {
+    await Promise.all([
+      tokenStorage.clearTokens(),
+      AsyncStorage.removeItem('user'),
+      AsyncStorage.removeItem('staff_data'),
+    ]);
+  };
+
   // Restore persisted auth + staff on app start
   useEffect(() => {
+    setApiAuthFailureHandler(() => {
+      clearAuthStorage();
+      clearAuthState();
+    });
+
     const restoreAuth = async () => {
       try {
-        const storedToken = await AsyncStorage.getItem('token');
+        const storedToken = await tokenStorage.getAccessToken();
         const storedUser = await AsyncStorage.getItem('user');
         const storedStaff = await AsyncStorage.getItem('staff_data');
 
@@ -42,11 +64,18 @@ export const AuthProvider = ({ children }) => {
     };
 
     restoreAuth();
+
+    return () => {
+      setApiAuthFailureHandler(null);
+    };
   }, []);
 
-  const login = async (userData, authToken) => {
+  const login = async (userData, authToken, refreshToken) => {
     try {
-      await AsyncStorage.setItem('token', authToken);
+      await tokenStorage.setTokens({
+        accessToken: authToken,
+        refreshToken,
+      });
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setToken(authToken);
       setUser(userData);
@@ -67,20 +96,24 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('staff_data');
-      setToken(null);
-      setUser(null);
-      setStaffData(null);
+      const refreshToken = await tokenStorage.getRefreshToken();
+
+      if (refreshToken) {
+        await authService.logout(refreshToken, token);
+      }
+
+      await clearAuthStorage();
+      clearAuthState();
     } catch (error) {
+      await clearAuthStorage();
+      clearAuthState();
     }
   };
 
   const loadStoredAuth = async () => {
     try {
       setLoading(true);
-      const storedToken = await AsyncStorage.getItem('token');
+      const storedToken = await tokenStorage.getAccessToken();
       const storedUser = await AsyncStorage.getItem('user');
       const storedStaff = await AsyncStorage.getItem('staff_data');
 
