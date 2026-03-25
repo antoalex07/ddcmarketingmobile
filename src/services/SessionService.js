@@ -18,7 +18,13 @@ const ENDED_AT_KEYS = [
   'session_ended_at',
 ];
 const MESSAGE_KEYS = ['message', 'error', 'detail'];
-const ACTIVE_FLAG_KEYS = ['active', 'is_active', 'has_active_session', 'session_active'];
+const ACTIVE_FLAG_KEYS = [
+  'active',
+  'is_active',
+  'has_active_session',
+  'hasActiveSession',
+  'session_active',
+];
 
 const getContainers = (payload) => {
   if (!payload || typeof payload !== 'object') {

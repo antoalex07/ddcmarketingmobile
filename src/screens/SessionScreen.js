@@ -26,6 +26,35 @@ const SessionScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
+  const clearLocalSessionState = async () => {
+    await AsyncStorage.removeItem(SESSION_ID_KEY);
+    const trackingActive = await isTracking();
+    if (trackingActive) {
+      await stopTracking();
+    }
+    setSessionActive(false);
+    setSessionId(null);
+    setSessionStartTime(null);
+    setElapsedTime(0);
+  };
+
+  const handleTerminalUploadState = async (uploadResult, showAlert = true) => {
+    if (!uploadResult?.terminalSessionError) {
+      return false;
+    }
+
+    await clearLocalSessionState();
+
+    if (showAlert) {
+      Alert.alert(
+        'Session Ended',
+        uploadResult.message || 'Your session is no longer active on the server. Please start a new session.'
+      );
+    }
+
+    return true;
+  };
+
   const toValidDate = (value) => {
     if (!value) {
       return new Date();
@@ -118,6 +147,10 @@ const SessionScreen = ({ navigation }) => {
 
       try {
         const result = await uploadUnsyncedLocations(token);
+        const handledTerminalState = await handleTerminalUploadState(result, sessionActive);
+        if (handledTerminalState) {
+          return;
+        }
         if (result.uploaded > 0) {
         }
         if (result.failed > 0) {
@@ -138,6 +171,10 @@ const SessionScreen = ({ navigation }) => {
     const retryUpload = async () => {
       try {
         const result = await uploadUnsyncedLocations(token);
+        const handledTerminalState = await handleTerminalUploadState(result);
+        if (handledTerminalState) {
+          return;
+        }
         if (result.uploaded > 0) {
         }
       } catch (error) {
@@ -369,17 +406,17 @@ const SessionScreen = ({ navigation }) => {
 
               // 2. Upload all pending points
               const uploadResult = await uploadUnsyncedLocations(token);
+              const handledTerminalState = await handleTerminalUploadState(uploadResult);
+              if (handledTerminalState) {
+                return;
+              }
 
               // 3. Mark session complete on backend
               const result = await sessionService.stopSession(token);
 
               if (result.success) {
                 // 4. Clear local state
-                await AsyncStorage.removeItem(SESSION_ID_KEY);
-                setSessionActive(false);
-                setSessionId(null);
-                setSessionStartTime(null);
-                setElapsedTime(0);
+                await clearLocalSessionState();
 
                 // 5. Navigate to report screen
                 navigation.navigate('Report', {
@@ -389,6 +426,9 @@ const SessionScreen = ({ navigation }) => {
                   uploaded: uploadResult.uploaded,
                   failed: uploadResult.failed,
                 });
+              } else if (result.status === 400) {
+                await clearLocalSessionState();
+                Alert.alert('Session Ended', result.message || 'No active session found on the server.');
               } else {
                 Alert.alert('Error', result.message);
               }

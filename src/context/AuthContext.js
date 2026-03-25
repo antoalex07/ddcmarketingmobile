@@ -4,6 +4,7 @@ import { errorLogService } from '../services/errorLogService';
 import { tokenStorage } from '../services/tokenStorage';
 import { authService } from '../services/AuthService';
 import { setApiAuthFailureHandler } from '../config/api';
+import { stopTracking } from '../services/TrackingController';
 
 const AuthContext = createContext();
 
@@ -28,18 +29,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   const clearAuthStorage = async () => {
-    await Promise.all([
-      tokenStorage.clearTokens(),
-      AsyncStorage.removeItem('user'),
-      AsyncStorage.removeItem('staff_data'),
+    const [stopTrackingResult, clearStorageResult] = await Promise.allSettled([
+      stopTracking(),
+      Promise.all([
+        tokenStorage.clearTokens(),
+        AsyncStorage.removeItem('user'),
+        AsyncStorage.removeItem('staff_data'),
+        AsyncStorage.removeItem('active_session_id'),
+      ]),
     ]);
+
+    if (stopTrackingResult.status === 'rejected') {
+      console.warn('Failed to stop tracking during auth cleanup', stopTrackingResult.reason);
+    }
+
+    if (clearStorageResult.status === 'rejected') {
+      throw clearStorageResult.reason;
+    }
   };
 
   // Restore persisted auth + staff on app start
   useEffect(() => {
-    setApiAuthFailureHandler(() => {
-      clearAuthStorage();
-      clearAuthState();
+    setApiAuthFailureHandler(async () => {
+      try {
+        await clearAuthStorage();
+      } finally {
+        clearAuthState();
+      }
     });
 
     const restoreAuth = async () => {

@@ -50,6 +50,58 @@ const shouldSkipErrorLogging = (headers) => {
   );
 };
 
+const isExpectedBusinessStatus = (error) => {
+  const status = error.response?.status;
+  const url = error.config?.url || '';
+
+  if (!status || !url) {
+    return false;
+  }
+
+  if (url.includes('/sessions/active') && status === 404) {
+    return true;
+  }
+
+  if (url.includes('/sessions/start') && status === 409) {
+    return true;
+  }
+
+  return false;
+};
+
+const getResponseMessage = (responseData) => {
+  if (typeof responseData === 'string') {
+    return responseData;
+  }
+
+  if (responseData && typeof responseData === 'object') {
+    const candidates = [responseData.message, responseData.error, responseData.detail];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate;
+      }
+    }
+  }
+
+  return '';
+};
+
+const isInvalidSessionBulkResponse = (error) => {
+  const status = error.response?.status;
+  const url = error.config?.url || '';
+
+  if (status !== 403 || !url.includes('/sessions/locations/bulk')) {
+    return false;
+  }
+
+  const message = getResponseMessage(error.response?.data).toLowerCase();
+  return (
+    message.includes('invalid or inactive session') ||
+    message.includes('invalid session') ||
+    message.includes('inactive session')
+  );
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // Increased timeout to 30 seconds for slower networks
@@ -84,13 +136,17 @@ const shouldAttemptRefresh = (error) => {
     return false;
   }
 
+  if (isInvalidSessionBulkResponse(error)) {
+    return false;
+  }
+
   return status === 401 || status === 403;
 };
 
 const clearAuthAndNotify = async () => {
   await tokenStorage.clearTokens();
   if (typeof onAuthFailure === 'function') {
-    onAuthFailure();
+    await onAuthFailure();
   }
 };
 
@@ -222,7 +278,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (!shouldSkipErrorLogging(error.config?.headers)) {
+    if (!shouldSkipErrorLogging(error.config?.headers) && !isExpectedBusinessStatus(error)) {
       errorLogService.logError(error, {
         source: 'api_response',
         is_fatal: false,
