@@ -31,7 +31,25 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
 .env*.local
+
+# Android / iOS build outputs
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+ios/build/
+ios/Pods/
+
+# Packaged binaries
+*.apk
+*.aab
+*.ipa
+
+# Logs
+*.log
 
 # typescript
 *.tsbuildinfo

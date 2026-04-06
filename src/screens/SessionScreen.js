@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../context/AuthContext';
 import { sessionService } from '../services/SessionService';
 import { requestLocationPermissions, openSettings, openLocationSettings, checkLocationStatus } from '../utils/locationPermissions';
 import { startTracking, stopTracking, isTracking } from '../services/TrackingController';
 import { uploadUnsyncedLocations } from '../services/LocationUploader';
 import { promptBatteryOptimization } from '../utils/batteryOptimization';
+import { validateSessionHealth } from '../services/SessionHealthChecker';
 
 const SESSION_ID_KEY = 'active_session_id';
 
@@ -25,6 +27,8 @@ const SessionScreen = ({ navigation }) => {
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [loading, setLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
 
   const clearLocalSessionState = async () => {
     await AsyncStorage.removeItem(SESSION_ID_KEY);
@@ -67,43 +71,107 @@ const SessionScreen = ({ navigation }) => {
   // Recovery effect - restore session state from backend and local fallback
   useEffect(() => {
     const recoverSession = async () => {
+      // Prevent multiple simultaneous recovery attempts
+      if (isRecovering) return;
+      setIsRecovering(true);
+
       let storedSessionId = null;
 
       try {
-        storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
-
-        if (token) {
-          const response = await sessionService.getActiveSession(token);
-
-          if (response.success && response.session) {
-            const activeSessionId = response.session.sessionId;
-            await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
-
-            setSessionId(activeSessionId);
-            setSessionActive(true);
-            setSessionStartTime(toValidDate(response.session.startedAt));
-
-            const trackingActive = await isTracking();
-            if (!trackingActive) {
-              await startTracking();
+        // Check for pending session stop and retry
+        const pendingStopSessionId = await AsyncStorage.getItem('pending_session_stop');
+        if (pendingStopSessionId && token) {
+          try {
+            const stopResult = await sessionService.stopSession(token);
+            if (stopResult.success || stopResult.status === 400) {
+              await AsyncStorage.removeItem('pending_session_stop');
             }
-            return;
-          }
-
-          if (response.success && !response.session) {
-            await AsyncStorage.removeItem(SESSION_ID_KEY);
-            const trackingActive = await isTracking();
-            if (trackingActive) {
-              await stopTracking();
-            }
-            setSessionActive(false);
-            setSessionId(null);
-            setSessionStartTime(null);
-            setElapsedTime(0);
-            return;
+          } catch (retryStopError) {
+            // Will retry on next app start
           }
         }
 
+        storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
+
+        if (token) {
+          // Check network status before backend validation
+          const networkState = await NetInfo.fetch();
+          const isConnected = networkState.isConnected && networkState.isInternetReachable !== false;
+
+          if (!isConnected) {
+            // Offline - use local session with caution flag
+            setIsOffline(true);
+            if (storedSessionId) {
+              const parsedStoredSessionId = parseInt(storedSessionId, 10);
+              if (!Number.isNaN(parsedStoredSessionId)) {
+                setSessionId(parsedStoredSessionId);
+                setSessionActive(true);
+                setSessionStartTime(new Date());
+
+                try {
+                  const trackingActive = await isTracking();
+                  if (!trackingActive) {
+                    await startTracking();
+                  }
+                } catch (trackingError) {
+                  await clearLocalSessionState();
+                }
+              }
+            }
+            return;
+          }
+
+          setIsOffline(false);
+
+          // Add timeout to backend validation
+          const backendValidationPromise = sessionService.getActiveSession(token);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 3000)
+          );
+
+          try {
+            const response = await Promise.race([backendValidationPromise, timeoutPromise]);
+
+            if (response.success && response.session) {
+              const activeSessionId = response.session.sessionId;
+              await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
+
+              setSessionId(activeSessionId);
+              setSessionActive(true);
+              setSessionStartTime(toValidDate(response.session.startedAt));
+
+              // Only start tracking if session is valid
+              try {
+                const trackingActive = await isTracking();
+                if (!trackingActive) {
+                  await startTracking();
+                }
+              } catch (trackingError) {
+                // If tracking fails, clear session state
+                await clearLocalSessionState();
+                return;
+              }
+              return;
+            }
+
+            if (response.success && !response.session) {
+              await AsyncStorage.removeItem(SESSION_ID_KEY);
+              const trackingActive = await isTracking();
+              if (trackingActive) {
+                await stopTracking();
+              }
+              setSessionActive(false);
+              setSessionId(null);
+              setSessionStartTime(null);
+              setElapsedTime(0);
+              return;
+            }
+          } catch (backendError) {
+            // Backend timeout or error - fall through to local fallback
+          }
+        }
+
+        // Fallback to local stored session (if backend unavailable)
         if (storedSessionId) {
           const parsedStoredSessionId = parseInt(storedSessionId, 10);
           if (!Number.isNaN(parsedStoredSessionId)) {
@@ -111,9 +179,16 @@ const SessionScreen = ({ navigation }) => {
             setSessionActive(true);
             setSessionStartTime(new Date());
 
-            const trackingActive = await isTracking();
-            if (!trackingActive) {
-              await startTracking();
+            // Only start tracking if stored session ID is valid
+            try {
+              const trackingActive = await isTracking();
+              if (!trackingActive) {
+                await startTracking();
+              }
+            } catch (trackingError) {
+              // If tracking fails, clear session state
+              await clearLocalSessionState();
+              return;
             }
             return;
           }
@@ -126,6 +201,7 @@ const SessionScreen = ({ navigation }) => {
         setSessionStartTime(null);
         setElapsedTime(0);
       } catch (error) {
+        // Final fallback - use stored session if available
         if (storedSessionId) {
           const parsedStoredSessionId = parseInt(storedSessionId, 10);
           if (!Number.isNaN(parsedStoredSessionId)) {
@@ -134,11 +210,45 @@ const SessionScreen = ({ navigation }) => {
             setSessionStartTime(new Date());
           }
         }
+      } finally {
+        setIsRecovering(false);
       }
     };
 
     recoverSession();
   }, [token]);
+
+  // Network monitoring effect - listen for network changes
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const isConnected = state.isConnected && state.isInternetReachable !== false;
+      setIsOffline(!isConnected);
+
+      // If network returns and we have a session, validate it
+      if (isConnected && sessionActive && sessionId && token && !isRecovering) {
+        sessionService.getActiveSession(token).then((response) => {
+          if (response.success && !response.session) {
+            // Session no longer exists on backend
+            clearLocalSessionState();
+            Alert.alert(
+              'Session Expired',
+              'Your session is no longer active on the server.',
+            );
+          } else if (response.success && response.session && response.session.sessionId !== sessionId) {
+            // Session ID mismatch - resync
+            const activeSessionId = response.session.sessionId;
+            AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
+            setSessionId(activeSessionId);
+            setSessionStartTime(toValidDate(response.session.startedAt));
+          }
+        }).catch(() => {
+          // Ignore errors during background validation
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [sessionActive, sessionId, token, isRecovering]);
 
   // Upload safety net - attempt upload on app open for any leftover unsynced points
   useEffect(() => {
@@ -161,6 +271,41 @@ const SessionScreen = ({ navigation }) => {
 
     uploadLeftoverPoints();
   }, [token]);
+
+  // Periodic session health check (every 3 minutes)
+  useEffect(() => {
+    if (!sessionActive || !token || !sessionId) return;
+
+    const HEALTH_CHECK_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
+
+    const checkHealth = async () => {
+      try {
+        const healthResult = await validateSessionHealth(token, sessionId);
+
+        if (!healthResult.healthy) {
+          if (healthResult.action === 'clear') {
+            // Session no longer exists on backend
+            await clearLocalSessionState();
+            Alert.alert(
+              'Session Expired',
+              healthResult.reason || 'Your session is no longer active on the server.',
+            );
+          } else if (healthResult.action === 'resync') {
+            // Session ID mismatch - update to backend session
+            const backendSessionId = healthResult.backendSessionId;
+            await AsyncStorage.setItem(SESSION_ID_KEY, String(backendSessionId));
+            setSessionId(backendSessionId);
+          }
+        }
+      } catch (error) {
+        // Ignore errors during background health check
+      }
+    };
+
+    const interval = setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [sessionActive, token, sessionId]);
 
   // Periodic upload retry during active session (every 5 minutes)
   useEffect(() => {
@@ -358,20 +503,47 @@ const SessionScreen = ({ navigation }) => {
         Alert.alert('Success', 'Work session started successfully');
       } else {
         if (result.status === 409) {
-          const activeSessionResponse = await sessionService.getActiveSession(token);
+          // Session already active - try to sync with backend
+          try {
+            // Check if we already have the session ID stored
+            const storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
+            
+            const activeSessionResponse = await sessionService.getActiveSession(token);
 
-          if (activeSessionResponse.success && activeSessionResponse.session) {
-            const activeSessionId = activeSessionResponse.session.sessionId;
-            await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
-            const trackingActive = await isTracking();
-            if (!trackingActive) {
-              await startTracking();
+            if (activeSessionResponse.success && activeSessionResponse.session) {
+              const activeSessionId = activeSessionResponse.session.sessionId;
+              
+              // Only update if different or missing
+              if (storedSessionId !== String(activeSessionId)) {
+                await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
+              }
+              
+              const trackingActive = await isTracking();
+              if (!trackingActive) {
+                await startTracking();
+              }
+              setSessionId(activeSessionId);
+              setSessionActive(true);
+              setSessionStartTime(toValidDate(activeSessionResponse.session.startedAt));
+              setElapsedTime(0);
+              Alert.alert('Session Active', 'Found your active session. You can now stop it.');
+              return;
+            } else {
+              // Backend says session already active but can't retrieve it
+              await clearLocalSessionState();
+              Alert.alert(
+                'Session Conflict',
+                'A session conflict occurred. Please try starting a new session.',
+              );
+              return;
             }
-            setSessionId(activeSessionId);
-            setSessionActive(true);
-            setSessionStartTime(toValidDate(activeSessionResponse.session.startedAt));
-            setElapsedTime(0);
-            Alert.alert('Session Active', 'Found your active session. You can now stop it.');
+          } catch (conflictError) {
+            // Failed to resolve 409 conflict
+            await clearLocalSessionState();
+            Alert.alert(
+              'Session Error',
+              'Could not resolve session conflict. Please try again.',
+            );
             return;
           }
         }
@@ -411,12 +583,27 @@ const SessionScreen = ({ navigation }) => {
                 return;
               }
 
-              // 3. Mark session complete on backend
-              const result = await sessionService.stopSession(token);
+              // 3. Mark session complete on backend (with timeout)
+              const stopSessionPromise = sessionService.stopSession(token);
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout')), 10000)
+              );
 
-              if (result.success) {
+              let result;
+              let stopFailed = false;
+
+              try {
+                result = await Promise.race([stopSessionPromise, timeoutPromise]);
+              } catch (stopError) {
+                // Timeout or network error - mark as pending stop
+                stopFailed = true;
+                await AsyncStorage.setItem('pending_session_stop', String(sessionId));
+              }
+
+              if (result && result.success) {
                 // 4. Clear local state
                 await clearLocalSessionState();
+                await AsyncStorage.removeItem('pending_session_stop');
 
                 // 5. Navigate to report screen
                 navigation.navigate('Report', {
@@ -426,10 +613,31 @@ const SessionScreen = ({ navigation }) => {
                   uploaded: uploadResult.uploaded,
                   failed: uploadResult.failed,
                 });
-              } else if (result.status === 400) {
+              } else if (result && result.status === 400) {
                 await clearLocalSessionState();
+                await AsyncStorage.removeItem('pending_session_stop');
                 Alert.alert('Session Ended', result.message || 'No active session found on the server.');
-              } else {
+              } else if (stopFailed) {
+                // Network/timeout error - allow user to proceed
+                await clearLocalSessionState();
+                Alert.alert(
+                  'Session Stopped Locally',
+                  'Could not reach server to complete session stop. Your session will be closed on next sync.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        navigation.navigate('Report', {
+                          sessionId,
+                          uploaded: uploadResult.uploaded,
+                          failed: uploadResult.failed,
+                          pendingStop: true,
+                        });
+                      },
+                    },
+                  ]
+                );
+              } else if (result) {
                 Alert.alert('Error', result.message);
               }
             } catch (error) {
@@ -517,6 +725,14 @@ const SessionScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.sessionContainer}>
+          {isOffline && (
+            <View style={styles.offlineBanner}>
+              <Text style={styles.offlineBannerText}>
+                📵 Offline - Using local session
+              </Text>
+            </View>
+          )}
+
           <View style={styles.statusCard}>
             <Text style={styles.statusLabel}>Session Status</Text>
             <View style={styles.statusBadge}>
@@ -666,6 +882,18 @@ const styles = StyleSheet.create({
   },
   sessionContainer: {
     marginBottom: 20,
+  },
+  offlineBanner: {
+    backgroundColor: '#fbbf24',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  offlineBannerText: {
+    color: '#78350f',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statusCard: {
     backgroundColor: '#fff',
