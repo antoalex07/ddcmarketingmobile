@@ -18,6 +18,30 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
+  
+  // Configure C++ STL for all native modules
+  afterEvaluate { project ->
+    if (project.hasProperty("android")) {
+      project.android {
+        if (hasProperty("externalNativeBuild")) {
+          externalNativeBuild {
+            cmake {
+              arguments "-DANDROID_STL=c++_shared"
+            }
+          }
+        }
+        if (hasProperty("defaultConfig")) {
+          defaultConfig {
+            externalNativeBuild {
+              cmake {
+                arguments "-DANDROID_STL=c++_shared"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 apply plugin: "expo-root-project"
