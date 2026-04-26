@@ -1,0 +1,88 @@
+diff --git a/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt b/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
+index e659285..6678e63 100644
+--- a/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
++++ b/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
+@@ -100,23 +100,34 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+   }
+ 
+   override fun didExecuteJob(jobService: JobService, params: JobParameters): Boolean {
+-    val data = taskManagerUtils.extractDataFromJobParams(params)
+-    val locationBundles = ArrayList<Bundle>()
+-    for (persistableLocationBundle in data) {
+-      val locationBundle = Bundle()
+-      val coordsBundle = Bundle()
+-      if (persistableLocationBundle != null) {
+-        coordsBundle.putAll(persistableLocationBundle.getPersistableBundle("coords"))
+-        locationBundle.putAll(persistableLocationBundle)
+-        locationBundle.putBundle("coords", coordsBundle)
+-        locationBundles.add(locationBundle)
++    return try {
++      val data = taskManagerUtils.extractDataFromJobParams(params)
++      val locationBundles = ArrayList<Bundle>()
++      for (persistableLocationBundle in data) {
++        val locationBundle = Bundle()
++        val coordsBundle = Bundle()
++        if (persistableLocationBundle != null) {
++          val persistableCoordsBundle = persistableLocationBundle.getPersistableBundle("coords")
++          if (persistableCoordsBundle == null) {
++            Log.w(TAG, "Skipping malformed location bundle with missing coords")
++            continue
++          }
++          coordsBundle.putAll(persistableCoordsBundle)
++          locationBundle.putAll(persistableLocationBundle)
++          locationBundle.putBundle("coords", coordsBundle)
++          locationBundles.add(locationBundle)
++        }
+       }
++      executeTaskWithLocationBundles(locationBundles) { finishJobSafely(jobService, params) }
++
++      // Returning `true` indicates that the job is still running, but in async mode.
++      // In that case we're obligated to call `jobService.jobFinished` as soon as the async block finishes.
++      true
++    } catch (e: Exception) {
++      Log.e(TAG, "Failed to execute location job safely", e)
++      finishJobSafely(jobService, params)
++      false
+     }
+-    executeTaskWithLocationBundles(locationBundles) { jobService.jobFinished(params, false) }
+-
+-    // Returning `true` indicates that the job is still running, but in async mode.
+-    // In that case we're obligated to call `jobService.jobFinished` as soon as the async block finishes.
+-    return true
+   }
+ 
+   //region private
+@@ -289,15 +300,29 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+   }
+ 
+   private fun executeTaskWithLocationBundles(locationBundles: ArrayList<Bundle>, callback: TaskExecutionCallback) {
+-    if (locationBundles.size > 0 && mTask != null) {
+-      val data = Bundle()
+-      data.putParcelableArrayList("locations", locationBundles)
+-      mTask?.execute(data, null, callback)
++    val task = mTask
++    if (locationBundles.size > 0 && task != null) {
++      try {
++        val data = Bundle()
++        data.putParcelableArrayList("locations", locationBundles)
++        task.execute(data, null, callback)
++      } catch (e: Exception) {
++        Log.e(TAG, "Failed to execute task with location bundles", e)
++        callback.onFinished(null)
++      }
+     } else {
+       callback.onFinished(null)
+     }
+   }
+ 
++  private fun finishJobSafely(jobService: JobService, params: JobParameters) {
++    try {
++      jobService.jobFinished(params, false)
++    } catch (e: Exception) {
++      Log.e(TAG, "Failed to finish location job safely", e)
++    }
++  }
++
+   override fun onHostResume() {
+     mIsHostPaused = false
+     maybeReportDeferredLocations()

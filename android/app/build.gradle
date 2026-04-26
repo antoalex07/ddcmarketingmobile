@@ -89,6 +89,29 @@ def hasReleaseSigning =
         findProperty('MYAPP_RELEASE_STORE_PASSWORD') &&
         findProperty('MYAPP_RELEASE_KEY_ALIAS') &&
         findProperty('MYAPP_RELEASE_KEY_PASSWORD')
+def expoLocationTaskConsumerPath = "${projectRoot}/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt"
+
+tasks.register("verifyExpoLocationPatch") {
+    doLast {
+        def taskConsumerFile = file(expoLocationTaskConsumerPath)
+        if (!taskConsumerFile.exists()) {
+            throw new GradleException("Missing expo-location LocationTaskConsumer at: ${expoLocationTaskConsumerPath}. Run npm install to restore node_modules and re-apply patches.")
+        }
+
+        def source = taskConsumerFile.getText('UTF-8')
+        def requiredSnippets = [
+                'val persistableCoordsBundle = persistableLocationBundle.getPersistableBundle("coords")',
+                'if (persistableCoordsBundle == null)',
+                'Log.w(TAG, "Skipping malformed location bundle with missing coords")',
+                'coordsBundle.putAll(persistableCoordsBundle)'
+        ]
+        def missingSnippets = requiredSnippets.findAll { snippet -> !source.contains(snippet) }
+
+        if (!missingSnippets.isEmpty()) {
+            throw new GradleException("Required expo-location patch is missing from LocationTaskConsumer.kt. Missing snippets: ${missingSnippets}. Run npm run postinstall before building.")
+        }
+    }
+}
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -101,8 +124,8 @@ android {
         applicationId 'com.antoalex07.ddcmarketingmobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 2
+        versionName "1.0.1"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
         
@@ -159,6 +182,8 @@ android {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
 }
+
+preBuild.dependsOn("verifyExpoLocationPatch")
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:

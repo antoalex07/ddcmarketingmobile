@@ -1,11 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { API_BASE_URL, ERROR_LOG_ENDPOINT } from '../config/apiConfig';
 import { tokenStorage } from './tokenStorage';
 
 const PENDING_ERROR_LOGS_KEY = 'pending_error_logs';
 const DEVICE_INSTALLATION_ID_KEY = 'device_installation_id';
 const MAX_PENDING_ERROR_LOGS = 100;
+const APP_VERSION =
+  typeof Constants.expoConfig?.version === 'string' && Constants.expoConfig.version.trim()
+    ? Constants.expoConfig.version
+    : 'unknown';
+const PATCH_LEVEL =
+  typeof Constants.expoConfig?.extra?.patch_level === 'string' &&
+  Constants.expoConfig.extra.patch_level.trim()
+    ? Constants.expoConfig.extra.patch_level
+    : 'unknown';
 
 const safeJsonParse = (value, fallback) => {
   if (!value) {
@@ -121,6 +131,8 @@ const buildErrorPayload = async (error, context = {}) => {
     happened_at: new Date().toISOString(),
     platform: Platform.OS,
     platform_version: String(Platform.Version),
+    app_version: APP_VERSION,
+    patch_level: PATCH_LEVEL,
     device_installation_id: deviceInstallationId,
     user_id: user?.userId ?? user?.user_id ?? null,
     user_name: user?.userName ?? user?.user_name ?? null,

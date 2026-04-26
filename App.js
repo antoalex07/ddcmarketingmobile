@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,8 +18,58 @@ import './src/services/LocationTask';
 import { errorLogService } from './src/services/errorLogService';
 import { createTable as createLocationTable } from './src/db/locationDB';
 import { createTable as createAppointmentTable } from './src/db/appointmentDB';
+import { startTracking, stopTracking } from './src/services/TrackingController';
 
 const Stack = createNativeStackNavigator();
+const LAST_SEEN_APP_VERSION_KEY = 'last_seen_app_version';
+const ACTIVE_SESSION_ID_KEY = 'active_session_id';
+
+const getCurrentAppVersion = () => {
+  const version = Constants.expoConfig?.version;
+  return typeof version === 'string' && version.trim() ? version : 'unknown';
+};
+
+const parseSessionId = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const resetTrackingAfterUpgrade = async () => {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  const currentVersion = getCurrentAppVersion();
+  const previousVersion = await AsyncStorage.getItem(LAST_SEEN_APP_VERSION_KEY);
+
+  if (!previousVersion) {
+    await AsyncStorage.setItem(LAST_SEEN_APP_VERSION_KEY, currentVersion);
+    return;
+  }
+
+  if (previousVersion === currentVersion) {
+    return;
+  }
+
+  try {
+    await stopTracking();
+
+    const storedSessionId = await AsyncStorage.getItem(ACTIVE_SESSION_ID_KEY);
+    if (parseSessionId(storedSessionId) !== null) {
+      await startTracking();
+    }
+  } catch (error) {
+    await errorLogService.logError(error, {
+      source: 'upgrade_tracking_reset',
+      details: {
+        previous_version: previousVersion,
+        current_version: currentVersion,
+      },
+    });
+  } finally {
+    await AsyncStorage.setItem(LAST_SEEN_APP_VERSION_KEY, currentVersion);
+  }
+};
 
 const AppNavigator = () => {
   const { token, loading } = useAuth();
@@ -97,10 +149,15 @@ const AppNavigator = () => {
 
 export default function App() {
   useEffect(() => {
-    errorLogService.installGlobalErrorHandler();
-    errorLogService.flushPendingLogs();
-    createLocationTable();
-    createAppointmentTable();
+    const initializeApp = async () => {
+      errorLogService.installGlobalErrorHandler();
+      createLocationTable();
+      createAppointmentTable();
+      await resetTrackingAfterUpgrade();
+      errorLogService.flushPendingLogs();
+    };
+
+    initializeApp();
   }, []);
 
   return (

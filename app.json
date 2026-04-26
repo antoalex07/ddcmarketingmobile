@@ -2,7 +2,10 @@
   "expo": {
     "name": "DDC Marketing",
     "slug": "ddcmarketingmobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
+    "extra": {
+      "patch_level": "expo-location-null-guard-v1"
+    },
     "icon": "./assets/branding/icon.png",
     "ios": {
       "icon": "./assets/branding/icon.png",
@@ -17,6 +20,8 @@
     },
     "android": {
       "package": "com.antoalex07.ddcmarketingmobile",
+      "versionCode": 2,
+      "jsEngine": "hermes",
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/adaptive-icon.png",
         "backgroundColor": "#0f4c81"
