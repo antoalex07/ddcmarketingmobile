@@ -90,6 +90,7 @@ def hasReleaseSigning =
         findProperty('MYAPP_RELEASE_KEY_ALIAS') &&
         findProperty('MYAPP_RELEASE_KEY_PASSWORD')
 def expoLocationTaskConsumerPath = "${projectRoot}/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt"
+def expoTaskJobServicePath = "${projectRoot}/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskJobService.java"
 
 tasks.register("verifyExpoLocationPatch") {
     doLast {
@@ -110,6 +111,23 @@ tasks.register("verifyExpoLocationPatch") {
         if (!missingSnippets.isEmpty()) {
             throw new GradleException("Required expo-location patch is missing from LocationTaskConsumer.kt. Missing snippets: ${missingSnippets}. Run npm run postinstall before building.")
         }
+
+        def taskJobServiceFile = file(expoTaskJobServicePath)
+        if (!taskJobServiceFile.exists()) {
+            throw new GradleException("Missing expo-task-manager TaskJobService at: ${expoTaskJobServicePath}. Run npm install to restore node_modules and re-apply patches.")
+        }
+
+        def taskJobServiceSource = taskJobServiceFile.getText('UTF-8')
+        def requiredTaskJobSnippets = [
+                'persistJobException("on_start_job_exception", params, error)',
+                'LOCATION_DIAGNOSTICS_LOG_FILE_NAME',
+                'finishJobAfterException(params)'
+        ]
+        def missingTaskJobSnippets = requiredTaskJobSnippets.findAll { snippet -> !taskJobServiceSource.contains(snippet) }
+
+        if (!missingTaskJobSnippets.isEmpty()) {
+            throw new GradleException("Required expo-task-manager patch is missing from TaskJobService.java. Missing snippets: ${missingTaskJobSnippets}. Run npm run postinstall before building.")
+        }
     }
 }
 
@@ -124,8 +142,8 @@ android {
         applicationId 'com.antoalex07.ddcmarketingmobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.0.2"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
         

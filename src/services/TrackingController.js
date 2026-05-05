@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { LOCATION_TASK_NAME } from './LocationTask';
+import { LOCATION_TASK_NAME } from './locationTaskConstants';
 
 const ensureTrackingPreconditions = async () => {
   const isTaskManagerAvailable = await TaskManager.isAvailableAsync();

@@ -1,8 +1,23 @@
 diff --git a/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt b/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
-index e659285..6678e63 100644
+index e659285..da1f5ee 100644
 --- a/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
 +++ b/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
-@@ -100,23 +100,34 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+@@ -33,7 +33,14 @@ import expo.modules.location.records.LocationOptions
+ import expo.modules.location.records.LocationResponse
+ import expo.modules.location.services.LocationTaskService
+ import expo.modules.location.services.LocationTaskService.ServiceBinder
++import java.io.File
++import java.text.SimpleDateFormat
++import java.util.Date
++import java.util.Locale
++import java.util.TimeZone
+ import kotlin.math.abs
++import org.json.JSONArray
++import org.json.JSONObject
+ 
+ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsInterface?) : TaskConsumer(context, taskManagerUtils), TaskConsumerInterface, LifecycleEventListener {
+   private var mTask: TaskInterface? = null
+@@ -100,26 +107,205 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
    }
  
    override fun didExecuteJob(jobService: JobService, params: JobParameters): Boolean {
@@ -17,42 +32,212 @@ index e659285..6678e63 100644
 -        locationBundle.putBundle("coords", coordsBundle)
 -        locationBundles.add(locationBundle)
 +    return try {
++      persistLocationDiagnostic("job_start", describeJobParams(params))
 +      val data = taskManagerUtils.extractDataFromJobParams(params)
 +      val locationBundles = ArrayList<Bundle>()
-+      for (persistableLocationBundle in data) {
++      for ((index, persistableLocationBundle) in data.withIndex()) {
 +        val locationBundle = Bundle()
 +        val coordsBundle = Bundle()
 +        if (persistableLocationBundle != null) {
 +          val persistableCoordsBundle = persistableLocationBundle.getPersistableBundle("coords")
 +          if (persistableCoordsBundle == null) {
 +            Log.w(TAG, "Skipping malformed location bundle with missing coords")
++            persistLocationDiagnostic(
++              "job_location_missing_coords",
++              describePersistableLocationBundle(index, persistableLocationBundle),
++              force = true
++            )
 +            continue
 +          }
 +          coordsBundle.putAll(persistableCoordsBundle)
 +          locationBundle.putAll(persistableLocationBundle)
 +          locationBundle.putBundle("coords", coordsBundle)
 +          locationBundles.add(locationBundle)
++        } else {
++          persistLocationDiagnostic(
++            "job_location_null_bundle",
++            JSONObject().put("index", index),
++            force = true
++          )
 +        }
++      }
++      persistLocationDiagnostic(
++        "job_payload_converted",
++        JSONObject().put("location_bundle_count", locationBundles.size)
++      )
++      executeTaskWithLocationBundles(locationBundles) {
++        persistLocationDiagnostic(
++          "job_callback_finish",
++          JSONObject().put("location_bundle_count", locationBundles.size)
++        )
++        finishJobSafely(jobService, params)
        }
-+      executeTaskWithLocationBundles(locationBundles) { finishJobSafely(jobService, params) }
 +
 +      // Returning `true` indicates that the job is still running, but in async mode.
 +      // In that case we're obligated to call `jobService.jobFinished` as soon as the async block finishes.
 +      true
 +    } catch (e: Exception) {
 +      Log.e(TAG, "Failed to execute location job safely", e)
++      persistLocationDiagnostic(
++        "job_exception",
++        describeThrowable(e).put("job", describeJobParams(params)),
++        force = true
++      )
 +      finishJobSafely(jobService, params)
 +      false
++    }
++  }
++
++  //region private
++  private fun isoNow(): String {
++    val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
++    formatter.timeZone = TimeZone.getTimeZone("UTC")
++    return formatter.format(Date())
++  }
++
++  private fun isLocationDiagnosticsEnabled(): Boolean {
++    val appContext = context?.applicationContext ?: return false
++    val preferences = appContext.getSharedPreferences(DIAGNOSTIC_PREFS_NAME, Context.MODE_PRIVATE)
++    val enabled = preferences.getBoolean(LOCATION_DEBUG_ENABLED_KEY, false)
++    val enabledUntil = preferences.getLong(LOCATION_DEBUG_ENABLED_UNTIL_KEY, 0L)
++
++    if (!enabled) {
++      return false
++    }
++
++    if (enabledUntil > 0L && System.currentTimeMillis() > enabledUntil) {
++      preferences
++        .edit()
++        .putBoolean(LOCATION_DEBUG_ENABLED_KEY, false)
++        .putLong(LOCATION_DEBUG_ENABLED_UNTIL_KEY, 0L)
++        .apply()
++      return false
      }
 -    executeTaskWithLocationBundles(locationBundles) { jobService.jobFinished(params, false) }
--
+ 
 -    // Returning `true` indicates that the job is still running, but in async mode.
 -    // In that case we're obligated to call `jobService.jobFinished` as soon as the async block finishes.
--    return true
+     return true
    }
  
-   //region private
-@@ -289,15 +300,29 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+-  //region private
++  private fun appendBoundedLine(file: File, line: String, maxLines: Int) {
++    val existingLines = if (file.exists()) file.readLines() else emptyList()
++    val mergedLines = (existingLines + line).takeLast(maxLines)
++    val output = if (mergedLines.isEmpty()) "" else mergedLines.joinToString("\n") + "\n"
++    file.writeText(output)
++  }
++
++  private fun persistLocationDiagnostic(event: String, details: JSONObject = JSONObject(), force: Boolean = false) {
++    try {
++      val appContext = context?.applicationContext ?: return
++      if (!force && !isLocationDiagnosticsEnabled()) {
++        return
++      }
++
++      val payload = JSONObject()
++      payload.put("timestamp", isoNow())
++      payload.put("source", TAG)
++      payload.put("event", event)
++      payload.put("details", details)
++
++      appendBoundedLine(
++        File(appContext.filesDir, LOCATION_DIAGNOSTICS_LOG_FILE_NAME),
++        payload.toString(),
++        MAX_LOCATION_DIAGNOSTIC_LOG_ENTRIES
++      )
++    } catch (diagnosticError: Exception) {
++      Log.w(TAG, "Failed to persist location diagnostic", diagnosticError)
++    }
++  }
++
++  private fun keysToJsonArray(bundle: PersistableBundle?): JSONArray {
++    val keys = JSONArray()
++
++    if (bundle == null) {
++      return keys
++    }
++
++    for (key in bundle.keySet()) {
++      keys.put(key)
++    }
++
++    return keys
++  }
++
++  private fun valueType(bundle: PersistableBundle, key: String): String {
++    return try {
++      bundle.get(key)?.javaClass?.name ?: "null"
++    } catch (_: Exception) {
++      "unreadable"
++    }
++  }
++
++  private fun describeThrowable(error: Throwable): JSONObject {
++    val details = JSONObject()
++    details.put("error_name", error.javaClass.name)
++    details.put("error_message", error.message ?: "Unknown error")
++    details.put("stack", Log.getStackTraceString(error))
++    return details
++  }
++
++  private fun describePersistableLocationBundle(index: Int, bundle: PersistableBundle?): JSONObject {
++    val details = JSONObject()
++    details.put("index", index)
++    details.put("bundle_present", bundle != null)
++
++    if (bundle == null) {
++      return details
++    }
++
++    val coords = bundle.getPersistableBundle("coords")
++    details.put("keys", keysToJsonArray(bundle))
++    details.put("has_coords", coords != null)
++    details.put("timestamp_present", bundle.containsKey("timestamp"))
++    details.put("timestamp_type", if (bundle.containsKey("timestamp")) valueType(bundle, "timestamp") else "missing")
++
++    if (coords != null) {
++      details.put("coords_keys", keysToJsonArray(coords))
++      details.put("has_latitude", coords.containsKey("latitude"))
++      details.put("has_longitude", coords.containsKey("longitude"))
++      details.put("has_accuracy", coords.containsKey("accuracy"))
++      details.put("latitude_type", if (coords.containsKey("latitude")) valueType(coords, "latitude") else "missing")
++      details.put("longitude_type", if (coords.containsKey("longitude")) valueType(coords, "longitude") else "missing")
++    }
++
++    return details
++  }
++
++  private fun describeJobParams(params: JobParameters): JSONObject {
++    val details = JSONObject()
++
++    try {
++      val extras = params.extras
++      val dataSize = extras.getInt("dataSize", 0)
++      val data = JSONArray()
++
++      details.put("job_id", params.jobId)
++      details.put("extras_keys", keysToJsonArray(extras))
++      details.put("app_scope_key", extras.getString("appId"))
++      details.put("task_name", extras.getString("taskName"))
++      details.put("data_size", dataSize)
++
++      for (index in 0 until dataSize.coerceAtMost(5)) {
++        data.put(describePersistableLocationBundle(index, extras.getPersistableBundle(index.toString())))
++      }
++
++      details.put("data_preview", data)
++    } catch (error: Exception) {
++      details.put("describe_error", describeThrowable(error))
++    }
++
++    return details
++  }
++
+   private fun startLocationUpdates() {
+     val context = context ?: run {
+       Log.w(TAG, "The context has been abandoned")
+@@ -289,15 +475,57 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
    }
  
    private fun executeTaskWithLocationBundles(locationBundles: ArrayList<Bundle>, callback: TaskExecutionCallback) {
@@ -63,14 +248,42 @@ index e659285..6678e63 100644
 +    val task = mTask
 +    if (locationBundles.size > 0 && task != null) {
 +      try {
++        persistLocationDiagnostic(
++          "task_execute_start",
++          JSONObject()
++            .put("task_name", task.name)
++            .put("app_scope_key", task.appScopeKey)
++            .put("location_bundle_count", locationBundles.size)
++        )
 +        val data = Bundle()
 +        data.putParcelableArrayList("locations", locationBundles)
 +        task.execute(data, null, callback)
++        persistLocationDiagnostic(
++          "task_execute_queued",
++          JSONObject()
++            .put("task_name", task.name)
++            .put("app_scope_key", task.appScopeKey)
++            .put("location_bundle_count", locationBundles.size)
++        )
 +      } catch (e: Exception) {
 +        Log.e(TAG, "Failed to execute task with location bundles", e)
++        persistLocationDiagnostic(
++          "task_execute_exception",
++          describeThrowable(e)
++            .put("task_name", task.name)
++            .put("app_scope_key", task.appScopeKey)
++            .put("location_bundle_count", locationBundles.size),
++          force = true
++        )
 +        callback.onFinished(null)
 +      }
      } else {
++      persistLocationDiagnostic(
++        "task_execute_skipped",
++        JSONObject()
++          .put("location_bundle_count", locationBundles.size)
++          .put("task_present", task != null)
++      )
        callback.onFinished(null)
      }
    }
@@ -86,3 +299,15 @@ index e659285..6678e63 100644
    override fun onHostResume() {
      mIsHostPaused = false
      maybeReportDeferredLocations()
+@@ -314,6 +542,11 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+   companion object {
+     private const val TAG = "LocationTaskConsumer"
+     private const val FOREGROUND_SERVICE_KEY = "foregroundService"
++    private const val DIAGNOSTIC_PREFS_NAME = "ddc_diagnostics"
++    private const val LOCATION_DEBUG_ENABLED_KEY = "location_debug_enabled"
++    private const val LOCATION_DEBUG_ENABLED_UNTIL_KEY = "location_debug_enabled_until"
++    private const val LOCATION_DIAGNOSTICS_LOG_FILE_NAME = "location_diagnostics.jsonl"
++    private const val MAX_LOCATION_DIAGNOSTIC_LOG_ENTRIES = 300
+     private var sLastTimestamp: Long = 0
+     fun shouldUseForegroundService(options: Map<String?, Any?>): Boolean {
+       return options.containsKey(FOREGROUND_SERVICE_KEY)
