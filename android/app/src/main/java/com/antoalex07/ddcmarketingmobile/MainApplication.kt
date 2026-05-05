@@ -34,7 +34,9 @@ import expo.modules.ReactNativeHostWrapper
 class MainApplication : Application(), ReactApplication {
   companion object {
     private const val CRASH_LOG_FILE_NAME = "native_crash_logs.jsonl"
+    private const val LOCATION_DIAGNOSTICS_LOG_FILE_NAME = "location_diagnostics.jsonl"
     private const val MAX_CRASH_LOG_ENTRIES = 100
+    private const val MAX_RECENT_LOCATION_DIAGNOSTICS = 25
     private const val NATIVE_CRASH_UPLOAD_URL = "http://ddcpharmacy.com/api/logs/mobile-native-crash/bulk"
     private const val NATIVE_CRASH_UPLOAD_CONNECT_TIMEOUT_MS = 10000
     private const val NATIVE_CRASH_UPLOAD_READ_TIMEOUT_MS = 10000
@@ -49,6 +51,7 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
+              add(DDCNativeDiagnosticsPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
@@ -68,15 +71,6 @@ class MainApplication : Application(), ReactApplication {
     return formatter.format(Date())
   }
 
-  private fun jsonEscape(value: String): String {
-    return value
-      .replace("\\", "\\\\")
-      .replace("\"", "\\\"")
-      .replace("\n", "\\n")
-      .replace("\r", "\\r")
-      .replace("\t", "\\t")
-  }
-
   private fun appendCrashLogLine(line: String) {
     try {
       val crashFile = File(filesDir, CRASH_LOG_FILE_NAME)
@@ -90,12 +84,23 @@ class MainApplication : Application(), ReactApplication {
   }
 
   private fun persistNativeCrash(thread: Thread, throwable: Throwable) {
-    val stack = jsonEscape(Log.getStackTraceString(throwable))
-    val message = jsonEscape(throwable.message ?: "Unknown native crash")
-    val threadName = jsonEscape(thread.name)
-    val errorName = jsonEscape(throwable.javaClass.name)
-    val payload = "{\"timestamp\":\"${isoNow()}\",\"platform\":\"android\",\"type\":\"uncaught_exception\",\"is_fatal\":true,\"thread\":\"$threadName\",\"name\":\"$errorName\",\"message\":\"$message\",\"stack\":\"$stack\"}"
-    appendCrashLogLine(payload)
+    val payload = JSONObject()
+    payload.put("timestamp", isoNow())
+    payload.put("platform", "android")
+    payload.put("type", "uncaught_exception")
+    payload.put("is_fatal", true)
+    payload.put("thread", thread.name)
+    payload.put("name", throwable.javaClass.name)
+    payload.put("message", throwable.message ?: "Unknown native crash")
+    payload.put("stack", Log.getStackTraceString(throwable))
+    payload.put("app_version", BuildConfig.VERSION_NAME)
+    payload.put("app_build", BuildConfig.VERSION_CODE)
+    payload.put("device_model", Build.MODEL ?: "unknown")
+    payload.put("device_manufacturer", Build.MANUFACTURER ?: "unknown")
+    payload.put("os_version", Build.VERSION.RELEASE ?: "unknown")
+    payload.put("sdk_int", Build.VERSION.SDK_INT)
+
+    appendCrashLogLine(payload.toString())
   }
 
   private fun getOrCreateDeviceInstallationId(): String {
@@ -139,10 +144,47 @@ class MainApplication : Application(), ReactApplication {
     payload.put("app_build", BuildConfig.VERSION_CODE)
     payload.put("device_installation_id", getOrCreateDeviceInstallationId())
     payload.put("device_model", Build.MODEL ?: "unknown")
+    payload.put("device_manufacturer", Build.MANUFACTURER ?: "unknown")
     payload.put("os_version", Build.VERSION.RELEASE ?: "unknown")
+    payload.put("sdk_int", Build.VERSION.SDK_INT)
+    payload.put("recent_location_diagnostics", readRecentJsonLines(LOCATION_DIAGNOSTICS_LOG_FILE_NAME, MAX_RECENT_LOCATION_DIAGNOSTICS))
     payload.put("logs", logs)
 
     return payload.toString()
+  }
+
+  private fun readRecentJsonLines(fileName: String, maxLines: Int): JSONArray {
+    val entries = JSONArray()
+
+    try {
+      val file = File(filesDir, fileName)
+      if (!file.exists()) {
+        return entries
+      }
+
+      val lines = file
+        .readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .takeLast(maxLines)
+
+      for (line in lines) {
+        try {
+          entries.put(JSONObject(line))
+        } catch (_: Exception) {
+          val fallback = JSONObject()
+          fallback.put("timestamp", isoNow())
+          fallback.put("source", "native_file_reader")
+          fallback.put("event", "raw_location_diagnostic")
+          fallback.put("message", line)
+          entries.put(fallback)
+        }
+      }
+    } catch (error: Exception) {
+      Log.w("MainApplication", "Failed to read recent location diagnostics", error)
+    }
+
+    return entries
   }
 
   private fun uploadCrashPayload(payload: String): Boolean {

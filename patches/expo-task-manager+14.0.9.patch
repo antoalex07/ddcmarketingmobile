@@ -1,0 +1,243 @@
+diff --git a/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskJobService.java b/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskJobService.java
+index abc6d90..0e177db 100644
+--- a/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskJobService.java
++++ b/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskJobService.java
+@@ -3,21 +3,216 @@ package expo.modules.taskManager;
+ import android.app.job.JobParameters;
+ import android.app.job.JobService;
+ import android.content.Context;
++import android.os.Build;
++import android.os.PersistableBundle;
++import android.util.Log;
++
++import org.json.JSONArray;
++import org.json.JSONObject;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileOutputStream;
++import java.io.InputStreamReader;
++import java.nio.charset.StandardCharsets;
++import java.text.SimpleDateFormat;
++import java.util.ArrayList;
++import java.util.Date;
++import java.util.List;
++import java.util.Locale;
++import java.util.TimeZone;
+ 
+ public class TaskJobService extends JobService {
++  private static final String TAG = "TaskJobService";
++  private static final String NATIVE_CRASH_LOG_FILE_NAME = "native_crash_logs.jsonl";
++  private static final String LOCATION_DIAGNOSTICS_LOG_FILE_NAME = "location_diagnostics.jsonl";
++  private static final int MAX_NATIVE_CRASH_LOG_ENTRIES = 100;
++  private static final int MAX_LOCATION_DIAGNOSTIC_LOG_ENTRIES = 300;
++
+   @Override
+   public boolean onStartJob(JobParameters params) {
+-    Context context = getApplicationContext();
+-    TaskService taskService = new TaskService(context);
++    try {
++      Context context = getApplicationContext();
++      TaskService taskService = new TaskService(context);
+ 
+-    return taskService.handleJob(this, params);
++      return taskService.handleJob(this, params);
++    } catch (RuntimeException error) {
++      persistJobException("on_start_job_exception", params, error);
++      finishJobAfterException(params);
++      return false;
++    }
+   }
+ 
+   @Override
+   public boolean onStopJob(JobParameters params) {
++    try {
++      Context context = getApplicationContext();
++      TaskService taskService = new TaskService(context);
++
++      return taskService.cancelJob(this, params);
++    } catch (RuntimeException error) {
++      persistJobException("on_stop_job_exception", params, error);
++      return false;
++    }
++  }
++
++  private void finishJobAfterException(JobParameters params) {
++    try {
++      if (params != null) {
++        jobFinished(params, false);
++      }
++    } catch (RuntimeException error) {
++      Log.w(TAG, "Failed to finish job after exception.", error);
++    }
++  }
++
++  private String isoNow() {
++    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
++    formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
++    return formatter.format(new Date());
++  }
++
++  private void appendBoundedLine(File file, String line, int maxLines) throws Exception {
++    List<String> existingLines = new ArrayList<>();
++
++    if (file.exists()) {
++      try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
++        String existingLine;
++        while ((existingLine = reader.readLine()) != null) {
++          existingLines.add(existingLine);
++        }
++      }
++    }
++
++    existingLines.add(line);
++
++    int fromIndex = Math.max(0, existingLines.size() - maxLines);
++    List<String> mergedLines = existingLines.subList(fromIndex, existingLines.size());
++    String output = mergedLines.isEmpty() ? "" : android.text.TextUtils.join("\n", mergedLines) + "\n";
++
++    try (FileOutputStream outputStream = new FileOutputStream(file, false)) {
++      outputStream.write(output.getBytes(StandardCharsets.UTF_8));
++    }
++  }
++
++  private JSONArray keysToJsonArray(PersistableBundle bundle) {
++    JSONArray keys = new JSONArray();
++
++    if (bundle == null) {
++      return keys;
++    }
++
++    for (String key : bundle.keySet()) {
++      keys.put(key);
++    }
++
++    return keys;
++  }
++
++  private JSONObject describePersistableLocationBundle(int index, PersistableBundle bundle) throws Exception {
++    JSONObject details = new JSONObject();
++    details.put("index", index);
++    details.put("bundle_present", bundle != null);
++
++    if (bundle == null) {
++      return details;
++    }
++
++    PersistableBundle coords = bundle.getPersistableBundle("coords");
++    details.put("keys", keysToJsonArray(bundle));
++    details.put("has_coords", coords != null);
++    details.put("timestamp_present", bundle.containsKey("timestamp"));
++
++    if (coords != null) {
++      details.put("coords_keys", keysToJsonArray(coords));
++      details.put("has_latitude", coords.containsKey("latitude"));
++      details.put("has_longitude", coords.containsKey("longitude"));
++      details.put("has_accuracy", coords.containsKey("accuracy"));
++    }
++
++    return details;
++  }
++
++  private JSONObject describeJobParams(JobParameters params) throws Exception {
++    JSONObject details = new JSONObject();
++
++    if (params == null) {
++      details.put("params_present", false);
++      return details;
++    }
++
++    PersistableBundle extras = params.getExtras();
++    int dataSize = extras != null ? extras.getInt("dataSize", 0) : 0;
++    JSONArray dataPreview = new JSONArray();
++
++    details.put("params_present", true);
++    details.put("job_id", params.getJobId());
++    details.put("extras_present", extras != null);
++    details.put("extras_keys", keysToJsonArray(extras));
++    details.put("app_scope_key", extras != null ? extras.getString("appId") : null);
++    details.put("task_name", extras != null ? extras.getString("taskName") : null);
++    details.put("data_size", dataSize);
++
++    if (extras != null) {
++      for (int i = 0; i < Math.min(dataSize, 5); i++) {
++        dataPreview.put(describePersistableLocationBundle(i, extras.getPersistableBundle(String.valueOf(i))));
++      }
++    }
++
++    details.put("data_preview", dataPreview);
++    return details;
++  }
++
++  private JSONObject describeThrowable(Throwable error) throws Exception {
++    JSONObject details = new JSONObject();
++    details.put("error_name", error.getClass().getName());
++    details.put("error_message", error.getMessage() != null ? error.getMessage() : "Unknown native job exception");
++    details.put("stack", Log.getStackTraceString(error));
++    return details;
++  }
++
++  private void persistJobException(String event, JobParameters params, RuntimeException error) {
+     Context context = getApplicationContext();
+-    TaskService taskService = new TaskService(context);
+ 
+-    return taskService.cancelJob(this, params);
++    if (context == null) {
++      return;
++    }
++
++    try {
++      JSONObject payload = new JSONObject();
++      payload.put("timestamp", isoNow());
++      payload.put("platform", "android");
++      payload.put("type", event);
++      payload.put("is_fatal", false);
++      payload.put("source", TAG);
++      payload.put("name", error.getClass().getName());
++      payload.put("message", error.getMessage() != null ? error.getMessage() : "Unknown native job exception");
++      payload.put("stack", Log.getStackTraceString(error));
++      payload.put("device_model", Build.MODEL != null ? Build.MODEL : "unknown");
++      payload.put("device_manufacturer", Build.MANUFACTURER != null ? Build.MANUFACTURER : "unknown");
++      payload.put("os_version", Build.VERSION.RELEASE != null ? Build.VERSION.RELEASE : "unknown");
++      payload.put("sdk_int", Build.VERSION.SDK_INT);
++      payload.put("job", describeJobParams(params));
++
++      appendBoundedLine(
++        new File(context.getFilesDir(), NATIVE_CRASH_LOG_FILE_NAME),
++        payload.toString(),
++        MAX_NATIVE_CRASH_LOG_ENTRIES
++      );
++
++      JSONObject diagnostic = new JSONObject();
++      diagnostic.put("timestamp", isoNow());
++      diagnostic.put("source", TAG);
++      diagnostic.put("event", event);
++      diagnostic.put("details", payload);
++      appendBoundedLine(
++        new File(context.getFilesDir(), LOCATION_DIAGNOSTICS_LOG_FILE_NAME),
++        diagnostic.toString(),
++        MAX_LOCATION_DIAGNOSTIC_LOG_ENTRIES
++      );
++    } catch (Exception loggingError) {
++      Log.e(TAG, "Failed to persist task job exception.", loggingError);
++    }
+   }
+ }
+diff --git a/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskService.java b/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskService.java
+index 2b6c2fa..6be5f0c 100644
+--- a/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskService.java
++++ b/node_modules/expo-task-manager/android/src/main/java/expo/modules/taskManager/TaskService.java
+@@ -614,7 +614,11 @@ public class TaskService implements SingletonModule, TaskServiceInterface {
+     handler.postDelayed(new Runnable() {
+       @Override
+       public void run() {
+-        jobService.jobFinished(params, false);
++        try {
++          jobService.jobFinished(params, false);
++        } catch (RuntimeException e) {
++          Log.w(TAG, "Failed to finish task job after timeout.", e);
++        }
+       }
+     }, timeout);
+   }
