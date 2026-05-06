@@ -1,10 +1,14 @@
 {
   "expo": {
-    "name": "DDC Marketing",
+    "name": "DDC Marketing Debug",
     "slug": "ddcmarketingmobile",
     "version": "1.0.2",
     "extra": {
-      "patch_level": "location-job-diagnostics-v2"
+      "patch_level": "location-job-diagnostics-v2",
+      "buildType": "debug-diagnostics-only",
+      "eas": {
+        "projectId": "e9af9034-f2a5-438f-8954-cca3e9b6d791"
+      }
     },
     "icon": "./assets/branding/icon.png",
     "ios": {
@@ -25,7 +29,14 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/adaptive-icon.png",
         "backgroundColor": "#0f4c81"
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "splash": {
       "image": "./assets/branding/splash-icon.png",

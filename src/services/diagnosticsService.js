@@ -2,11 +2,10 @@ import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import Constants from 'expo-constants';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { getUnsyncedCount } from '../db/locationDB';
-import { errorLogService } from './errorLogService';
 import { nativeCrashLogService } from './nativeCrashLogService';
 import { LOCATION_TASK_NAME } from './locationTaskConstants';
 
@@ -70,12 +69,75 @@ const normalizeError = (error) => {
   };
 };
 
-const getDiagnosticsFilePath = () => {
-  if (!FileSystem.documentDirectory) {
+const getDiagnosticsFilePath = async () => {
+  try {
+    // Try JS FileSystem first
+    if (FileSystem.documentDirectory) {
+      return `${FileSystem.documentDirectory}${LOCATION_DIAGNOSTICS_FILE_NAME}`;
+    }
+
+    // If FileSystem.documentDirectory is null, manually construct the app files directory
+    // For Android: /data/data/[package-name]/files/
+    if (Platform.OS === 'android') {
+      // Try to get app package name from Constants
+      const packageName = Constants.expoConfig?.android?.package || 'com.antoalex07.ddcmarketingmobile';
+      const androidFilesPath = `/data/data/${packageName}/files/${LOCATION_DIAGNOSTICS_FILE_NAME}`;
+      
+      // Try native path first
+      if (nativeDiagnostics?.getLocationDiagnosticsStatus) {
+        try {
+          const nativeStatus = await nativeDiagnostics.getLocationDiagnosticsStatus();
+          if (nativeStatus?.path) {
+            return nativeStatus.path;
+          }
+        } catch (error) {
+          // Fall through to use constructed path
+        }
+      }
+      
+      // Return constructed path as fallback
+      return androidFilesPath;
+    }
+
+    return null;
+  } catch (error) {
     return null;
   }
+};
 
-  return `${FileSystem.documentDirectory}${LOCATION_DIAGNOSTICS_FILE_NAME}`;
+const ensureDiagnosticsDirectoryExists = async () => {
+  try {
+    // If JS FileSystem.documentDirectory exists, use it
+    if (FileSystem.documentDirectory) {
+      const dirInfo = await FileSystem.getInfoAsync(FileSystem.documentDirectory);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory, { intermediates: true });
+      }
+      return true;
+    }
+
+    // If using manual Android path, try to create via FileSystem
+    if (Platform.OS === 'android') {
+      const packageName = Constants.expoConfig?.android?.package || 'com.antoalex07.ddcmarketingmobile';
+      const androidFilesDir = `/data/data/${packageName}/files`;
+      
+      try {
+        const dirInfo = await FileSystem.getInfoAsync(androidFilesDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(androidFilesDir, { intermediates: true });
+        }
+        return true;
+      } catch (error) {
+        // FileSystem might fail on sandboxed paths, but files might still be writable
+        // Return true to allow the write attempt
+        return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    return false;
+  }
 };
 
 const readJsonLines = async (filePath) => {
@@ -153,7 +215,7 @@ const setStoredDiagnosticsStatus = async (enabled, ttlHours = DEFAULT_TTL_HOURS)
 };
 
 export const diagnosticsService = {
-  getLocationDiagnosticsFilePath: () => getDiagnosticsFilePath(),
+  getLocationDiagnosticsFilePath: async () => getDiagnosticsFilePath(),
 
   getLocationDiagnosticsStatus: async () => {
     if (Platform.OS === 'android' && nativeDiagnostics?.getLocationDiagnosticsStatus) {
@@ -215,7 +277,7 @@ export const diagnosticsService = {
       };
     }
 
-    const filePath = getDiagnosticsFilePath();
+    const filePath = await getDiagnosticsFilePath();
     if (!filePath) {
       return {
         success: false,
@@ -224,6 +286,15 @@ export const diagnosticsService = {
     }
 
     try {
+      // Ensure directory exists before writing
+      const dirExists = await ensureDiagnosticsDirectoryExists();
+      if (!dirExists) {
+        return {
+          success: false,
+          message: 'Failed to access or create document directory',
+        };
+      }
+
       const existingEntries = await readJsonLines(filePath);
       const entry = {
         timestamp: new Date().toISOString(),
@@ -251,7 +322,7 @@ export const diagnosticsService = {
   },
 
   readLocationDiagnostics: async () => {
-    const filePath = getDiagnosticsFilePath();
+    const filePath = await getDiagnosticsFilePath();
     if (!filePath) {
       return {
         success: false,
@@ -260,6 +331,15 @@ export const diagnosticsService = {
     }
 
     try {
+      // Ensure directory exists
+      const dirExists = await ensureDiagnosticsDirectoryExists();
+      if (!dirExists) {
+        return {
+          success: false,
+          message: 'Failed to access document directory',
+        };
+      }
+
       const data = await readJsonLines(filePath);
       return {
         success: true,
@@ -275,7 +355,7 @@ export const diagnosticsService = {
   },
 
   clearLocationDiagnostics: async () => {
-    const filePath = getDiagnosticsFilePath();
+    const filePath = await getDiagnosticsFilePath();
     if (!filePath) {
       return {
         success: false,
@@ -382,16 +462,37 @@ export const diagnosticsService = {
       ? nativeCrashResult.data.slice(0, 25)
       : [];
 
-    return errorLogService.logError(new Error('Location diagnostic bundle'), {
-      source: 'location_diagnostics',
-      is_fatal: false,
-      details: {
-        snapshot,
-        location_diagnostics_count: locationDiagnosticsResult.data?.length || 0,
-        native_crash_log_count: nativeCrashResult.data?.length || 0,
-        location_diagnostics: locationDiagnostics,
-        native_crash_logs: nativeCrashLogs,
-      },
+    const bundle = {
+      snapshot,
+      location_diagnostics_count: locationDiagnosticsResult.data?.length || 0,
+      native_crash_log_count: nativeCrashResult.data?.length || 0,
+      location_diagnostics: locationDiagnostics,
+      native_crash_logs: nativeCrashLogs,
+    };
+
+    await diagnosticsService.appendLocationDiagnostic('debug_bundle_captured', bundle, {
+      source: 'debug_screen',
+      force: true,
     });
+
+    return {
+      success: true,
+      bundle,
+    };
+  },
+
+  copyTextToClipboard: async (label, text) => {
+    if (Platform.OS === 'android' && nativeDiagnostics?.copyTextToClipboard) {
+      await nativeDiagnostics.copyTextToClipboard(String(label || 'DDC Debug'), String(text || ''));
+      return {
+        success: true,
+        source: 'native',
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Clipboard copy is unavailable on this platform',
+    };
   },
 };

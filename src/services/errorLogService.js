@@ -1,8 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { API_BASE_URL, ERROR_LOG_ENDPOINT } from '../config/apiConfig';
-import { tokenStorage } from './tokenStorage';
 
 const PENDING_ERROR_LOGS_KEY = 'pending_error_logs';
 const DEVICE_INSTALLATION_ID_KEY = 'device_installation_id';
@@ -141,34 +139,6 @@ const buildErrorPayload = async (error, context = {}) => {
   };
 };
 
-const uploadLog = async (token, payload) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}${ERROR_LOG_ENDPOINT}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        message: `Error log upload failed with status ${response.status}`,
-        status: response.status,
-      };
-    }
-
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      message: error?.message || 'Failed to upload error log',
-    };
-  }
-};
-
 const flushPendingLogsInternal = async () => {
   try {
     const pendingLogs = await readPendingLogs();
@@ -181,38 +151,11 @@ const flushPendingLogsInternal = async () => {
       };
     }
 
-    const token = await tokenStorage.getAccessToken();
-    if (!token) {
-      return {
-        success: false,
-        uploaded: 0,
-        remaining: pendingLogs.length,
-        message: 'No auth token available for error log upload',
-      };
-    }
-
-    let uploaded = 0;
-    const remainingLogs = [];
-
-    for (const log of pendingLogs) {
-      const result = await uploadLog(token, log);
-      if (result.success) {
-        uploaded += 1;
-      } else {
-        remainingLogs.push(log);
-      }
-    }
-
-    await writePendingLogs(remainingLogs);
-
     return {
-      success: remainingLogs.length === 0,
-      uploaded,
-      remaining: remainingLogs.length,
-      message:
-        remainingLogs.length > 0
-          ? 'Some error logs could not be uploaded'
-          : undefined,
+      success: true,
+      uploaded: 0,
+      remaining: pendingLogs.length,
+      message: 'Backend upload is disabled in this build',
     };
   } catch (error) {
     return {
@@ -274,13 +217,12 @@ export const errorLogService = {
       const pendingLogs = await readPendingLogs();
       pendingLogs.push(payload);
       await writePendingLogs(pendingLogs);
-
-      const flushResult = await flushPendingLogsInternal();
       return {
         success: true,
         queued: true,
-        uploaded: flushResult.uploaded,
-        remaining: flushResult.remaining,
+        uploaded: 0,
+        remaining: pendingLogs.length,
+        backendDisabled: true,
       };
     } catch (queueError) {
       return {
@@ -292,6 +234,17 @@ export const errorLogService = {
 
   flushPendingLogs: async () => {
     return flushPendingLogsInternal();
+  },
+
+  readQueuedLogs: async () => {
+    return readPendingLogs();
+  },
+
+  clearQueuedLogs: async () => {
+    await writePendingLogs([]);
+    return {
+      success: true,
+    };
   },
 
   installGlobalErrorHandler: () => {

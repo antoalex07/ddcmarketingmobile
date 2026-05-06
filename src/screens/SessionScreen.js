@@ -9,54 +9,46 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
 import { useAuth } from '../context/AuthContext';
 import { sessionService } from '../services/SessionService';
-import { requestLocationPermissions, openSettings, openLocationSettings, checkLocationStatus } from '../utils/locationPermissions';
+import {
+  requestLocationPermissions,
+  openSettings,
+  openLocationSettings,
+  checkLocationStatus,
+} from '../utils/locationPermissions';
 import { startTracking, stopTracking, isTracking } from '../services/TrackingController';
-import { uploadUnsyncedLocations } from '../services/LocationUploader';
 import { promptBatteryOptimization } from '../utils/batteryOptimization';
-import { validateSessionHealth } from '../services/SessionHealthChecker';
 
 const SESSION_ID_KEY = 'active_session_id';
+const SESSION_START_KEY = 'session_start_time';
 
 const SessionScreen = ({ navigation }) => {
-  const { user, token, logout, staffData } = useAuth();
+  const { user, logout } = useAuth();
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [loading, setLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [isRecovering, setIsRecovering] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
+  const [locationHealthy, setLocationHealthy] = useState(true);
 
   const clearLocalSessionState = async () => {
-    await AsyncStorage.removeItem(SESSION_ID_KEY);
+    await Promise.allSettled([
+      AsyncStorage.removeItem(SESSION_ID_KEY),
+      AsyncStorage.removeItem(SESSION_START_KEY),
+      AsyncStorage.removeItem('session_end_time'),
+    ]);
+
     const trackingActive = await isTracking();
     if (trackingActive) {
       await stopTracking();
     }
+
     setSessionActive(false);
     setSessionId(null);
     setSessionStartTime(null);
     setElapsedTime(0);
-  };
-
-  const handleTerminalUploadState = async (uploadResult, showAlert = true) => {
-    if (!uploadResult?.terminalSessionError) {
-      return false;
-    }
-
-    await clearLocalSessionState();
-
-    if (showAlert) {
-      Alert.alert(
-        'Session Ended',
-        uploadResult.message || 'Your session is no longer active on the server. Please start a new session.'
-      );
-    }
-
-    return true;
   };
 
   const toValidDate = (value) => {
@@ -68,277 +60,39 @@ const SessionScreen = ({ navigation }) => {
     return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   };
 
-  // Recovery effect - restore session state from backend and local fallback
   useEffect(() => {
-    const recoverSession = async () => {
-      // Prevent multiple simultaneous recovery attempts
-      if (isRecovering) return;
-      setIsRecovering(true);
-
-      let storedSessionId = null;
-
+    const restoreSession = async () => {
+      setIsRestoring(true);
       try {
-        // Check for pending session stop and retry
-        const pendingStopSessionId = await AsyncStorage.getItem('pending_session_stop');
-        if (pendingStopSessionId && token) {
-          try {
-            const stopResult = await sessionService.stopSession(token);
-            if (stopResult.success || stopResult.status === 400) {
-              await AsyncStorage.removeItem('pending_session_stop');
-            }
-          } catch (retryStopError) {
-            // Will retry on next app start
+        const response = await sessionService.getActiveSession();
+        if (response.success && response.session) {
+          const activeSession = response.session;
+          setSessionActive(true);
+          setSessionId(activeSession.sessionId);
+          setSessionStartTime(toValidDate(activeSession.startedAt));
+
+          const trackingActive = await isTracking();
+          if (!trackingActive) {
+            await startTracking();
           }
+        } else {
+          await clearLocalSessionState();
         }
-
-        storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
-
-        if (token) {
-          // Check network status before backend validation
-          const networkState = await NetInfo.fetch();
-          const isConnected = networkState.isConnected && networkState.isInternetReachable !== false;
-
-          if (!isConnected) {
-            // Offline - use local session with caution flag
-            setIsOffline(true);
-            if (storedSessionId) {
-              const parsedStoredSessionId = parseInt(storedSessionId, 10);
-              if (!Number.isNaN(parsedStoredSessionId)) {
-                setSessionId(parsedStoredSessionId);
-                setSessionActive(true);
-                setSessionStartTime(new Date());
-
-                try {
-                  const trackingActive = await isTracking();
-                  if (!trackingActive) {
-                    await startTracking();
-                  }
-                } catch (trackingError) {
-                  await clearLocalSessionState();
-                }
-              }
-            }
-            return;
-          }
-
-          setIsOffline(false);
-
-          // Add timeout to backend validation
-          const backendValidationPromise = sessionService.getActiveSession(token);
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 3000)
-          );
-
-          try {
-            const response = await Promise.race([backendValidationPromise, timeoutPromise]);
-
-            if (response.success && response.session) {
-              const activeSessionId = response.session.sessionId;
-              await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
-
-              setSessionId(activeSessionId);
-              setSessionActive(true);
-              setSessionStartTime(toValidDate(response.session.startedAt));
-
-              // Only start tracking if session is valid
-              try {
-                const trackingActive = await isTracking();
-                if (!trackingActive) {
-                  await startTracking();
-                }
-              } catch (trackingError) {
-                // If tracking fails, clear session state
-                await clearLocalSessionState();
-                return;
-              }
-              return;
-            }
-
-            if (response.success && !response.session) {
-              await AsyncStorage.removeItem(SESSION_ID_KEY);
-              const trackingActive = await isTracking();
-              if (trackingActive) {
-                await stopTracking();
-              }
-              setSessionActive(false);
-              setSessionId(null);
-              setSessionStartTime(null);
-              setElapsedTime(0);
-              return;
-            }
-          } catch (backendError) {
-            // Backend timeout or error - fall through to local fallback
-          }
-        }
-
-        // Fallback to local stored session (if backend unavailable)
-        if (storedSessionId) {
-          const parsedStoredSessionId = parseInt(storedSessionId, 10);
-          if (!Number.isNaN(parsedStoredSessionId)) {
-            setSessionId(parsedStoredSessionId);
-            setSessionActive(true);
-            setSessionStartTime(new Date());
-
-            // Only start tracking if stored session ID is valid
-            try {
-              const trackingActive = await isTracking();
-              if (!trackingActive) {
-                await startTracking();
-              }
-            } catch (trackingError) {
-              // If tracking fails, clear session state
-              await clearLocalSessionState();
-              return;
-            }
-            return;
-          }
-
-          await AsyncStorage.removeItem(SESSION_ID_KEY);
-        }
-
-        setSessionActive(false);
-        setSessionId(null);
-        setSessionStartTime(null);
-        setElapsedTime(0);
       } catch (error) {
-        // Final fallback - use stored session if available
-        if (storedSessionId) {
-          const parsedStoredSessionId = parseInt(storedSessionId, 10);
-          if (!Number.isNaN(parsedStoredSessionId)) {
-            setSessionId(parsedStoredSessionId);
-            setSessionActive(true);
-            setSessionStartTime(new Date());
-          }
-        }
+        await clearLocalSessionState();
       } finally {
-        setIsRecovering(false);
+        setIsRestoring(false);
       }
     };
 
-    recoverSession();
-  }, [token]);
+    restoreSession();
+  }, []);
 
-  // Network monitoring effect - listen for network changes
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      const isConnected = state.isConnected && state.isInternetReachable !== false;
-      setIsOffline(!isConnected);
-
-      // If network returns and we have a session, validate it
-      if (isConnected && sessionActive && sessionId && token && !isRecovering) {
-        sessionService.getActiveSession(token).then((response) => {
-          if (response.success && !response.session) {
-            // Session no longer exists on backend
-            clearLocalSessionState();
-            Alert.alert(
-              'Session Expired',
-              'Your session is no longer active on the server.',
-            );
-          } else if (response.success && response.session && response.session.sessionId !== sessionId) {
-            // Session ID mismatch - resync
-            const activeSessionId = response.session.sessionId;
-            AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
-            setSessionId(activeSessionId);
-            setSessionStartTime(toValidDate(response.session.startedAt));
-          }
-        }).catch(() => {
-          // Ignore errors during background validation
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, [sessionActive, sessionId, token, isRecovering]);
-
-  // Upload safety net - attempt upload on app open for any leftover unsynced points
-  useEffect(() => {
-    const uploadLeftoverPoints = async () => {
-      if (!token) return;
-
-      try {
-        const result = await uploadUnsyncedLocations(token);
-        const handledTerminalState = await handleTerminalUploadState(result, sessionActive);
-        if (handledTerminalState) {
-          return;
-        }
-        if (result.uploaded > 0) {
-        }
-        if (result.failed > 0) {
-        }
-      } catch (error) {
-      }
-    };
-
-    uploadLeftoverPoints();
-  }, [token]);
-
-  // Periodic session health check (every 3 minutes)
-  useEffect(() => {
-    if (!sessionActive || !token || !sessionId) return;
-
-    const HEALTH_CHECK_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
-
-    const checkHealth = async () => {
-      try {
-        const healthResult = await validateSessionHealth(token, sessionId);
-
-        if (!healthResult.healthy) {
-          if (healthResult.action === 'clear') {
-            // Session no longer exists on backend
-            await clearLocalSessionState();
-            Alert.alert(
-              'Session Expired',
-              healthResult.reason || 'Your session is no longer active on the server.',
-            );
-          } else if (healthResult.action === 'resync') {
-            // Session ID mismatch - update to backend session
-            const backendSessionId = healthResult.backendSessionId;
-            await AsyncStorage.setItem(SESSION_ID_KEY, String(backendSessionId));
-            setSessionId(backendSessionId);
-          }
-        }
-      } catch (error) {
-        // Ignore errors during background health check
-      }
-    };
-
-    const interval = setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [sessionActive, token, sessionId]);
-
-  // Periodic upload retry during active session (every 5 minutes)
-  useEffect(() => {
-    if (!sessionActive || !token) return;
-
-    const RETRY_INTERVAL_MS = 1 * 60 * 1000; // 5 minutes
-
-    const retryUpload = async () => {
-      try {
-        const result = await uploadUnsyncedLocations(token);
-        const handledTerminalState = await handleTerminalUploadState(result);
-        if (handledTerminalState) {
-          return;
-        }
-        if (result.uploaded > 0) {
-        }
-      } catch (error) {
-      }
-    };
-
-    const interval = setInterval(retryUpload, RETRY_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [sessionActive, token]);
-
-  // Timer effect
   useEffect(() => {
     let interval;
     if (sessionActive && sessionStartTime) {
       interval = setInterval(() => {
-        const now = new Date();
-        const diff = Math.floor((now - sessionStartTime) / 1000);
-        setElapsedTime(diff);
+        setElapsedTime(Math.floor((Date.now() - sessionStartTime.getTime()) / 1000));
       }, 1000);
     }
 
@@ -349,80 +103,54 @@ const SessionScreen = ({ navigation }) => {
     };
   }, [sessionActive, sessionStartTime]);
 
-  // Location status monitoring - check every 10 seconds during active session
   useEffect(() => {
-    if (!sessionActive) return;
+    if (!sessionActive) {
+      setLocationHealthy(true);
+      return undefined;
+    }
 
-    let alertShown = false; // Prevent multiple alerts
-
+    let cancelled = false;
     const checkLocation = async () => {
       try {
         const status = await checkLocationStatus();
-
-        // Only show alert if not already shown and location is not functional
-        if (!status.isFullyFunctional && !alertShown) {
-          alertShown = true;
-
-          if (!status.servicesEnabled) {
-            // GPS is turned off
-            Alert.alert(
-              'Location Services Disabled',
-              'Location services have been turned off. Please enable GPS to continue tracking your session.',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                  onPress: () => {
-                    alertShown = false; // Allow another alert after dismissal
-                  }
-                },
-                {
-                  text: 'Enable Location',
-                  onPress: () => {
-                    openLocationSettings();
-                    alertShown = false; // Allow checking again after user returns
-                  }
-                }
-              ]
-            );
-          } else if (!status.permissionsGranted) {
-            // Permissions were revoked
-            Alert.alert(
-              'Location Permission Required',
-              'Location permissions have been revoked. Please grant location permissions to continue tracking.',
-              [
-                {
-                  text: 'Cancel',
-                  style: 'cancel',
-                  onPress: () => {
-                    alertShown = false;
-                  }
-                },
-                {
-                  text: 'Open Settings',
-                  onPress: () => {
-                    openSettings();
-                    alertShown = false;
-                  }
-                }
-              ]
-            );
+        if (!cancelled) {
+          setLocationHealthy(Boolean(status.isFullyFunctional));
+          if (!status.isFullyFunctional) {
+            if (!status.servicesEnabled) {
+              Alert.alert(
+                'Location Services Disabled',
+                'Enable location services to keep the session tracking.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Open Settings', onPress: openLocationSettings },
+                ]
+              );
+            } else if (!status.permissionsGranted) {
+              Alert.alert(
+                'Location Permission Required',
+                'Grant location permissions to keep the session tracking.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Open Settings', onPress: openSettings },
+                ]
+              );
+            }
           }
-        } else if (status.isFullyFunctional) {
-          // Reset alert flag when location is working again
-          alertShown = false;
         }
       } catch (error) {
+        if (!cancelled) {
+          setLocationHealthy(false);
+        }
       }
     };
 
-    // Initial check
     checkLocation();
-
-    // Check every 10 seconds
     const interval = setInterval(checkLocation, 10000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [sessionActive]);
 
   const formatTime = (seconds) => {
@@ -439,252 +167,132 @@ const SessionScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Request location permissions first
       const { granted, canAskAgain, locationDisabled, error } = await requestLocationPermissions();
 
       if (!granted) {
         if (locationDisabled) {
-          Alert.alert(
-            'Location Disabled',
-            error,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Enable Location', onPress: openLocationSettings }
-            ]
-          );
+          Alert.alert('Location Disabled', error, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Enable Location', onPress: openLocationSettings },
+          ]);
         } else if (!canAskAgain) {
-          Alert.alert(
-            'Permission Required',
-            `${error}. Please enable location permissions in settings.`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: openSettings }
-            ]
-          );
+          Alert.alert('Permission Required', `${error}. Please enable location permissions.`, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: openSettings },
+          ]);
         } else {
           Alert.alert('Permission Required', error);
         }
-        setLoading(false);
         return;
       }
 
-      const result = await sessionService.startSession(token);
-
-      if (result.success) {
-        let activeSession = {
-          sessionId: result.sessionId,
-          startedAt: result.startedAt,
-        };
-
-        const activeSessionResult = await sessionService.getActiveSession(token);
-        if (activeSessionResult.success && activeSessionResult.session) {
-          activeSession = activeSessionResult.session;
-        }
-
-        if (!activeSession.sessionId) {
-          Alert.alert('Error', 'Session started but could not read active session details.');
-          return;
-        }
-
-        await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSession.sessionId));
-        await startTracking();
-        setSessionId(activeSession.sessionId);
-        setSessionActive(true);
-        setSessionStartTime(toValidDate(activeSession.startedAt));
-        setElapsedTime(0);
-
-        // Prompt for battery optimization on first session
-        const hasPrompted = await AsyncStorage.getItem('battery_optimization_prompted');
-        if (!hasPrompted) {
-          await AsyncStorage.setItem('battery_optimization_prompted', 'true');
-          setTimeout(() => promptBatteryOptimization(), 1000);
-        }
-
-        Alert.alert('Success', 'Work session started successfully');
-      } else {
-        if (result.status === 409) {
-          // Session already active - try to sync with backend
-          try {
-            // Check if we already have the session ID stored
-            const storedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
-            
-            const activeSessionResponse = await sessionService.getActiveSession(token);
-
-            if (activeSessionResponse.success && activeSessionResponse.session) {
-              const activeSessionId = activeSessionResponse.session.sessionId;
-              
-              // Only update if different or missing
-              if (storedSessionId !== String(activeSessionId)) {
-                await AsyncStorage.setItem(SESSION_ID_KEY, String(activeSessionId));
-              }
-              
-              const trackingActive = await isTracking();
-              if (!trackingActive) {
-                await startTracking();
-              }
-              setSessionId(activeSessionId);
-              setSessionActive(true);
-              setSessionStartTime(toValidDate(activeSessionResponse.session.startedAt));
-              setElapsedTime(0);
-              Alert.alert('Session Active', 'Found your active session. You can now stop it.');
-              return;
-            } else {
-              // Backend says session already active but can't retrieve it
-              await clearLocalSessionState();
-              Alert.alert(
-                'Session Conflict',
-                'A session conflict occurred. Please try starting a new session.',
-              );
-              return;
-            }
-          } catch (conflictError) {
-            // Failed to resolve 409 conflict
-            await clearLocalSessionState();
-            Alert.alert(
-              'Session Error',
-              'Could not resolve session conflict. Please try again.',
-            );
-            return;
-          }
-        }
-
-        Alert.alert('Error', result.message);
+      const result = await sessionService.startSession();
+      if (!result.success) {
+        Alert.alert('Error', result.message || 'Failed to start session');
+        return;
       }
+
+      const activeSession = {
+        sessionId: result.sessionId,
+        startedAt: result.startedAt,
+      };
+
+      await AsyncStorage.multiSet([
+        [SESSION_ID_KEY, String(activeSession.sessionId)],
+        [SESSION_START_KEY, activeSession.startedAt],
+      ]);
+
+      try {
+        await startTracking();
+      } catch (trackingError) {
+        await clearLocalSessionState();
+        Alert.alert(
+          'Error',
+          trackingError?.message || 'Started the session but could not enable tracking'
+        );
+        return;
+      }
+
+      setSessionId(activeSession.sessionId);
+      setSessionActive(true);
+      setSessionStartTime(toValidDate(activeSession.startedAt));
+      setElapsedTime(0);
+
+      const hasPrompted = await AsyncStorage.getItem('battery_optimization_prompted');
+      if (!hasPrompted) {
+        await AsyncStorage.setItem('battery_optimization_prompted', 'true');
+        setTimeout(() => promptBatteryOptimization(), 1000);
+      }
+
+      Alert.alert('Success', 'Local session started');
     } catch (error) {
-      Alert.alert('Error', 'Failed to start session. Please try again.');
+      Alert.alert('Error', error?.message || 'Failed to start session');
     } finally {
       setLoading(false);
     }
   };
 
   const handleStopSession = async () => {
-    Alert.alert(
-      'Stop Session',
-      'Are you sure you want to end this work session?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Stop',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
+    Alert.alert('Stop Session', 'End this local work session?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Stop',
+        style: 'destructive',
+        onPress: async () => {
+          setLoading(true);
+          try {
+            await stopTracking();
+            const result = await sessionService.stopSession();
+            await clearLocalSessionState();
 
-            try {
-              // 1. Stop tracking first to prevent new points
-              await stopTracking();
-
-              // 2. Upload all pending points
-              const uploadResult = await uploadUnsyncedLocations(token);
-              const handledTerminalState = await handleTerminalUploadState(uploadResult);
-              if (handledTerminalState) {
-                return;
-              }
-
-              // 3. Mark session complete on backend (with timeout)
-              const stopSessionPromise = sessionService.stopSession(token);
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout')), 10000)
-              );
-
-              let result;
-              let stopFailed = false;
-
-              try {
-                result = await Promise.race([stopSessionPromise, timeoutPromise]);
-              } catch (stopError) {
-                // Timeout or network error - mark as pending stop
-                stopFailed = true;
-                await AsyncStorage.setItem('pending_session_stop', String(sessionId));
-              }
-
-              if (result && result.success) {
-                // 4. Clear local state
-                await clearLocalSessionState();
-                await AsyncStorage.removeItem('pending_session_stop');
-
-                // 5. Navigate to report screen
-                navigation.navigate('Report', {
-                  sessionId: result.data.sessionId,
-                  startedAt: result.data.startedAt,
-                  endedAt: result.data.endedAt,
-                  uploaded: uploadResult.uploaded,
-                  failed: uploadResult.failed,
-                });
-              } else if (result && result.status === 400) {
-                await clearLocalSessionState();
-                await AsyncStorage.removeItem('pending_session_stop');
-                Alert.alert('Session Ended', result.message || 'No active session found on the server.');
-              } else if (stopFailed) {
-                // Network/timeout error - allow user to proceed
-                await clearLocalSessionState();
-                Alert.alert(
-                  'Session Stopped Locally',
-                  'Could not reach server to complete session stop. Your session will be closed on next sync.',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => {
-                        navigation.navigate('Report', {
-                          sessionId,
-                          uploaded: uploadResult.uploaded,
-                          failed: uploadResult.failed,
-                          pendingStop: true,
-                        });
-                      },
-                    },
-                  ]
-                );
-              } else if (result) {
-                Alert.alert('Error', result.message);
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to stop session. Please try again.');
-            } finally {
-              setLoading(false);
+            if (result.success) {
+              navigation.navigate('Report', {
+                sessionId: result.data.sessionId,
+                startedAt: result.data.startedAt,
+                endedAt: result.data.endedAt,
+                uploaded: 0,
+                failed: 0,
+              });
+              return;
             }
-          },
+
+            Alert.alert('Session Ended', result.message || 'Session cleared locally');
+          } catch (error) {
+            Alert.alert('Error', error?.message || 'Failed to stop session');
+          } finally {
+            setLoading(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleLogout = () => {
     if (sessionActive) {
-      Alert.alert(
-        'Cannot Logout',
-        'You have an active session. Please stop your session before logging out.',
-        [
-          {
-            text: 'OK',
-            style: 'default',
-          },
-        ]
-      );
+      Alert.alert('Cannot Logout', 'Stop the session first.');
       return;
     }
 
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Logout', 'Leave the local debugger?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          navigation.replace('Login');
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            navigation.replace('Login');
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
+
+  if (isRestoring) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -693,25 +301,10 @@ const SessionScreen = ({ navigation }) => {
           <View style={styles.userInfoContent}>
             <View style={styles.userInfoDetails}>
               <Text style={styles.welcomeText}>Welcome,</Text>
-              <Text style={styles.userName}>
-                {staffData?.staff_name || user?.userName}
-              </Text>
-              {staffData ? (
-                <>
-                  {staffData.staff_email ? (
-                    <Text style={styles.userMeta}>✉  {staffData.staff_email}</Text>
-                  ) : null}
-                  {staffData.staff_phone ? (
-                    <Text style={styles.userMeta}>📞  {staffData.staff_phone}</Text>
-                  ) : null}
-                  {staffData.staff_region ? (
-                    <Text style={styles.userMeta}>📍  {staffData.staff_region}{staffData.staff_area ? ` · ${staffData.staff_area}` : ''}</Text>
-                  ) : null}
-                </>
-              ) : (
-                <Text style={styles.userRole}>Role ID: {user?.roleId}</Text>
-              )}
+              <Text style={styles.userName}>{user?.userName || 'Local Debug'}</Text>
+              <Text style={styles.userRole}>Offline session mode</Text>
             </View>
+
             <TouchableOpacity
               style={[styles.logoutButtonTop, sessionActive && styles.logoutButtonTopDisabled]}
               onPress={handleLogout}
@@ -725,86 +318,57 @@ const SessionScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.sessionContainer}>
-          {isOffline && (
-            <View style={styles.offlineBanner}>
-              <Text style={styles.offlineBannerText}>
-                📵 Offline - Using local session
-              </Text>
-            </View>
-          )}
-
           <View style={styles.statusCard}>
             <Text style={styles.statusLabel}>Session Status</Text>
             <View style={styles.statusBadge}>
-              <View
-                style={[
-                  styles.statusIndicator,
-                  sessionActive ? styles.activeIndicator : styles.inactiveIndicator,
-                ]}
-              />
-              <Text
-                style={[
-                  styles.statusText,
-                  sessionActive ? styles.activeText : styles.inactiveText,
-                ]}
-              >
+              <View style={[styles.statusIndicator, sessionActive ? styles.activeIndicator : styles.inactiveIndicator]} />
+              <Text style={[styles.statusText, sessionActive ? styles.activeText : styles.inactiveText]}>
                 {sessionActive ? 'Active' : 'Inactive'}
               </Text>
             </View>
+
+            {sessionActive && (
+              <View style={styles.sessionDetails}>
+                <Text style={styles.sessionIdText}>Session ID: {sessionId}</Text>
+                <Text style={styles.elapsedText}>{formatTime(elapsedTime)}</Text>
+                <Text style={styles.metaText}>
+                  Location: {locationHealthy ? 'OK' : 'Needs attention'}
+                </Text>
+              </View>
+            )}
           </View>
 
-          {sessionActive && (
-            <View style={styles.timerCard}>
-              <Text style={styles.timerLabel}>Session Duration</Text>
-              <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
-              {sessionId && (
-                <Text style={styles.sessionIdText}>Session ID: {sessionId}</Text>
-              )}
-            </View>
-          )}
-
-          <View style={styles.buttonContainer}>
+          <View style={styles.buttonGrid}>
             {!sessionActive ? (
               <TouchableOpacity
-                style={[styles.button, styles.startButton, loading && styles.buttonDisabled]}
+                style={[styles.primaryButton, loading && styles.buttonDisabled]}
                 onPress={handleStartSession}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Start Session</Text>
-                )}
+                <Text style={styles.primaryButtonText}>
+                  {loading ? 'Starting...' : 'Start Session'}
+                </Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.button, styles.stopButton, loading && styles.buttonDisabled]}
+                style={[styles.stopButton, loading && styles.buttonDisabled]}
                 onPress={handleStopSession}
                 disabled={loading}
               >
-                {loading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Stop Session</Text>
-                )}
+                <Text style={styles.primaryButtonText}>
+                  {loading ? 'Stopping...' : 'Stop Session'}
+                </Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('Debug')}
+            >
+              <Text style={styles.secondaryButtonText}>Debug</Text>
+            </TouchableOpacity>
           </View>
         </View>
-
-        <TouchableOpacity
-          style={styles.appointmentsButton}
-          onPress={() => navigation.navigate('Appointments')}
-        >
-          <Text style={styles.appointmentsButtonText}>View Appointments</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.debugButton}
-          onPress={() => navigation.navigate('Debug')}
-        >
-          <Text style={styles.debugButtonText}>Debug</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -815,204 +379,158 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 16,
   },
   userInfoContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
   },
   userInfoContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 12,
   },
   userInfoDetails: {
     flex: 1,
-    marginRight: 12,
-  },
-  logoutButtonTop: {
-    backgroundColor: '#ef4444',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  logoutButtonTopDisabled: {
-    backgroundColor: '#fca5a5',
-    opacity: 0.6,
-  },
-  logoutButtonTopText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  logoutButtonTopTextDisabled: {
-    color: '#fff',
   },
   welcomeText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6b7280',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginTop: 4,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 2,
   },
   userRole: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  userMeta: {
     fontSize: 13,
     color: '#6b7280',
     marginTop: 4,
   },
-  sessionContainer: {
-    marginBottom: 20,
-  },
-  offlineBanner: {
-    backgroundColor: '#fbbf24',
+  logoutButtonTop: {
+    backgroundColor: '#ef4444',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  offlineBannerText: {
-    color: '#78350f',
-    fontSize: 14,
+  logoutButtonTopDisabled: {
+    backgroundColor: '#fca5a5',
+  },
+  logoutButtonTopText: {
+    color: '#fff',
     fontWeight: '600',
+  },
+  logoutButtonTopTextDisabled: {
+    color: '#fee2e2',
+  },
+  sessionContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
   statusCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 2,
   },
   statusLabel: {
     fontSize: 14,
     color: '#6b7280',
     marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   statusIndicator: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: 8,
   },
   activeIndicator: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#22c55e',
   },
   inactiveIndicator: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#9ca3af',
   },
   statusText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   activeText: {
-    color: '#10b981',
+    color: '#16a34a',
   },
   inactiveText: {
-    color: '#ef4444',
-  },
-  timerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    marginBottom: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  timerLabel: {
-    fontSize: 14,
     color: '#6b7280',
-    marginBottom: 8,
   },
-  timerText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#2563eb',
-    fontVariant: ['tabular-nums'],
+  sessionDetails: {
+    marginTop: 20,
   },
   sessionIdText: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  elapsedText: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#111827',
     marginTop: 8,
   },
-  buttonContainer: {
+  metaText: {
+    fontSize: 13,
+    color: '#6b7280',
     marginTop: 4,
   },
-  button: {
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
+  buttonGrid: {
+    gap: 12,
   },
-  startButton: {
-    backgroundColor: '#10b981',
+  primaryButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
   },
   stopButton: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#dc2626',
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  secondaryButtonText: {
+    color: '#111827',
+    fontWeight: '600',
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '700',
   },
   buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  appointmentsButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  appointmentsButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  debugButton: {
-    marginTop: 12,
-    padding: 10,
-    alignItems: 'center',
-  },
-  debugButtonText: {
-    color: '#9ca3af',
-    fontSize: 12,
+    opacity: 0.6,
   },
 });
 

@@ -61,16 +61,16 @@ const ReportScreen = ({ navigation, route }) => {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Location Data</Text>
+          <Text style={styles.cardTitle}>Local Capture</Text>
 
           <View style={styles.row}>
-            <Text style={styles.label}>Points Uploaded</Text>
+            <Text style={styles.label}>Captured Points</Text>
             <Text style={[styles.value, styles.successText]}>{uploaded || 0}</Text>
           </View>
 
           {failed > 0 && (
             <View style={styles.row}>
-              <Text style={styles.label}>Failed Uploads</Text>
+              <Text style={styles.label}>Pending Points</Text>
               <Text style={[styles.value, styles.errorText]}>{failed}</Text>
             </View>
           )}
@@ -79,7 +79,7 @@ const ReportScreen = ({ navigation, route }) => {
         {failed > 0 && (
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>
-              Some location points failed to upload. They will be synced when you start your next session.
+              Some local points were not captured in this session.
             </Text>
           </View>
         )}

@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const NATIVE_CRASH_LOG_FILE_NAME = 'native_crash_logs.jsonl';
 

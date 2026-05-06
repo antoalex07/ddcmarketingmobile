@@ -5,25 +5,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SQLite from 'expo-sqlite';
-import {
-  createTable,
-  insertPoint,
-  getUnsyncedPoints,
-  markAsSynced
-} from '../db/locationDB';
+import { getUnsyncedPoints } from '../db/locationDB';
+import { errorLogService } from '../services/errorLogService';
 import { nativeCrashLogService } from '../services/nativeCrashLogService';
 import { diagnosticsService } from '../services/diagnosticsService';
 import { startTracking, stopTracking, isTracking } from '../services/TrackingController';
 
-const DATABASE_NAME = 'locations.db';
 const SESSION_ID_KEY = 'active_session_id';
+const MAX_VISIBLE_LOGS = 120;
 
 const DebugScreen = () => {
-  const [log, setLog] = useState([]);
+  const [debugLog, setDebugLog] = useState([]);
   const [points, setPoints] = useState([]);
   const [nativeCrashLogs, setNativeCrashLogs] = useState([]);
   const [nativeCrashLogPath, setNativeCrashLogPath] = useState('');
@@ -35,16 +30,34 @@ const DebugScreen = () => {
   });
 
   useEffect(() => {
-    initDB();
+    initializeDebugScreen();
+  }, []);
+
+  const addDebugLog = async (message, details = null) => {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      message,
+      details,
+    };
+
+    setDebugLog((previous) => [entry, ...previous].slice(0, MAX_VISIBLE_LOGS));
+
+    await diagnosticsService.appendLocationDiagnostic(
+      'debug_screen_log',
+      entry,
+      { source: 'debug_screen', force: true }
+    );
+  };
+
+  const initializeDebugScreen = async () => {
     const logPathResult = nativeCrashLogService.getLogFilePath();
     if (logPathResult.success) {
       setNativeCrashLogPath(logPathResult.path);
     }
-    refreshDiagnosticsStatus();
-  }, []);
 
-  const addLog = (message) => {
-    setLog(prev => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev]);
+    await refreshDiagnosticsStatus();
+    await readUnsyncedPoints(false);
+    await addDebugLog('Debug screen opened');
   };
 
   const refreshDiagnosticsStatus = async () => {
@@ -52,126 +65,92 @@ const DebugScreen = () => {
       const status = await diagnosticsService.getLocationDiagnosticsStatus();
       setDiagnosticsStatus(status);
 
-      const filePath = diagnosticsService.getLocationDiagnosticsFilePath();
+      const filePath = await diagnosticsService.getLocationDiagnosticsFilePath();
       if (filePath) {
         setLocationDiagnosticsPath(filePath);
       } else if (status.path) {
         setLocationDiagnosticsPath(status.path);
       }
     } catch (error) {
-      addLog(`Diagnostics status error: ${error.message}`);
+      await addDebugLog('Diagnostics status read failed', {
+        message: error.message,
+      });
     }
   };
 
   const getDiagnosticsStatusText = () => {
     if (!diagnosticsStatus.enabled) {
-      return 'Location diagnostics: Off';
+      return 'Session diagnostics: Off';
     }
 
     const enabledUntil = Number(diagnosticsStatus.enabledUntil || 0);
     if (!enabledUntil) {
-      return 'Location diagnostics: On';
+      return 'Session diagnostics: On';
     }
 
-    return `Location diagnostics: On until ${new Date(enabledUntil).toLocaleString()}`;
+    return `Session diagnostics: On until ${new Date(enabledUntil).toLocaleString()}`;
   };
 
-  const enableLocationDiagnostics = async () => {
+  const startSessionDiagnostics = async () => {
     try {
       await diagnosticsService.setLocationDiagnosticsEnabled(true, 24);
       await diagnosticsService.appendLocationDiagnostic(
-        'debug_mode_enabled',
+        'session_debug_started',
         { ttl_hours: 24 },
         { source: 'debug_screen', force: true }
       );
       await refreshDiagnosticsStatus();
-      addLog('Location diagnostics enabled for 24 hours');
+      await captureSessionSnapshot('Session diagnostics enabled for 24 hours');
     } catch (error) {
-      addLog(`Enable diagnostics error: ${error.message}`);
+      await addDebugLog('Session diagnostics enable failed', {
+        message: error.message,
+      });
     }
   };
 
-  const disableLocationDiagnostics = async () => {
+  const stopSessionDiagnostics = async () => {
     try {
       await diagnosticsService.appendLocationDiagnostic(
-        'debug_mode_disabled',
+        'session_debug_stopped',
         {},
         { source: 'debug_screen', force: true }
       );
       await diagnosticsService.setLocationDiagnosticsEnabled(false);
       await refreshDiagnosticsStatus();
-      addLog('Location diagnostics disabled');
+      await addDebugLog('Session diagnostics disabled');
     } catch (error) {
-      addLog(`Disable diagnostics error: ${error.message}`);
+      await addDebugLog('Session diagnostics disable failed', {
+        message: error.message,
+      });
     }
   };
 
-  const captureLocationSnapshot = async () => {
+  const captureSessionSnapshot = async (message = 'Session snapshot captured') => {
     try {
       const snapshot = await diagnosticsService.captureLocationDebugSnapshot();
-      addLog(
-        `Snapshot: tracking=${snapshot.tracking_started} session=${snapshot.active_session_id || 'none'} unsynced=${snapshot.unsynced_location_count}`
-      );
-      await readLocationDiagnostics();
+      await addDebugLog(message, {
+        tracking_started: snapshot.tracking_started,
+        active_session_id: snapshot.active_session_id,
+        unsynced_location_count: snapshot.unsynced_location_count,
+        task_defined: snapshot.task_defined,
+        task_manager_available: snapshot.task_manager_available,
+        location_services_enabled: snapshot.location_services_enabled,
+      });
+      await readUnsyncedPoints(false);
+      await readLocationDiagnostics(false);
+      return snapshot;
     } catch (error) {
-      addLog(`Snapshot error: ${error.message}`);
-    }
-  };
-
-  const readLocationDiagnostics = async () => {
-    try {
-      const result = await diagnosticsService.readLocationDiagnostics();
-
-      if (!result.success) {
-        addLog(`Location diagnostics read error: ${result.message}`);
-        return;
-      }
-
-      setLocationDiagnostics(result.data);
-      if (result.path) {
-        setLocationDiagnosticsPath(result.path);
-      }
-      addLog(`Read ${result.data.length} location diagnostics`);
-    } catch (error) {
-      addLog(`Location diagnostics read error: ${error.message}`);
-    }
-  };
-
-  const clearLocationDiagnostics = async () => {
-    try {
-      const result = await diagnosticsService.clearLocationDiagnostics();
-
-      if (!result.success) {
-        addLog(`Location diagnostics clear error: ${result.message}`);
-        return;
-      }
-
-      setLocationDiagnostics([]);
-      addLog('Cleared location diagnostics');
-    } catch (error) {
-      addLog(`Location diagnostics clear error: ${error.message}`);
-    }
-  };
-
-  const uploadDiagnostics = async () => {
-    try {
-      const result = await diagnosticsService.uploadDiagnosticBundle();
-
-      if (!result.success) {
-        addLog(`Upload diagnostics error: ${result.message || 'unknown error'}`);
-        return;
-      }
-
-      addLog(`Uploaded diagnostics bundle; remaining queued logs: ${result.remaining}`);
-    } catch (error) {
-      addLog(`Upload diagnostics error: ${error.message}`);
+      await addDebugLog('Session snapshot failed', {
+        message: error.message,
+      });
+      return null;
     }
   };
 
   const resetBackgroundLocationTask = () => {
     Alert.alert(
       'Reset Background Task',
-      'This stops the current location job and starts it again only if an active session is stored on this device.',
+      'This stops the current Android location job and starts it again only if an active session is stored on this device.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -188,9 +167,15 @@ const DebugScreen = () => {
               const parsedSessionId = parseInt(sessionId, 10);
               if (!Number.isNaN(parsedSessionId) && parsedSessionId > 0) {
                 await startTracking();
-                addLog(`Background task reset for session ${parsedSessionId}`);
+                await addDebugLog('Background task reset and restarted', {
+                  active_session_id: parsedSessionId,
+                  was_tracking: trackingActive,
+                });
               } else {
-                addLog('Background task stopped; no active session ID found');
+                await addDebugLog('Background task stopped; no active session ID found', {
+                  stored_session_id: sessionId,
+                  was_tracking: trackingActive,
+                });
               }
 
               await diagnosticsService.appendLocationDiagnostic(
@@ -201,166 +186,166 @@ const DebugScreen = () => {
                 },
                 { source: 'debug_screen', force: true }
               );
-              await captureLocationSnapshot();
+              await captureSessionSnapshot('Snapshot after background task reset');
             } catch (error) {
-              addLog(`Reset task error: ${error.message}`);
-              await diagnosticsService.appendLocationDiagnostic(
-                'debug_task_reset_failed',
-                { message: error.message, stack: error.stack || null },
-                { source: 'debug_screen', force: true }
-              );
+              await addDebugLog('Background task reset failed', {
+                message: error.message,
+                stack: error.stack || null,
+              });
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-  const initDB = async () => {
-    try {
-      await createTable();
-      addLog('Database initialized');
-    } catch (error) {
-      addLog(`Init error: ${error.message}`);
-    }
-  };
-
-  const insertFakePoint = async () => {
-    try {
-      const fakePoint = {
-        session_id: Math.floor(Math.random() * 100),
-        latitude: 37.7749 + (Math.random() - 0.5) * 0.01,
-        longitude: -122.4194 + (Math.random() - 0.5) * 0.01,
-        accuracy: Math.random() * 20,
-        speed: Math.random() * 10,
-        heading: Math.random() * 360,
-        timestamp: new Date().toISOString()
-      };
-      const id = await insertPoint(fakePoint);
-      addLog(`Inserted point with id: ${id}`);
-    } catch (error) {
-      addLog(`Insert error: ${error.message}`);
-    }
-  };
-
-  const insertBulkPoints = async () => {
-    try {
-      const sessionId = Math.floor(Math.random() * 100);
-      for (let i = 0; i < 10; i++) {
-        await insertPoint({
-          session_id: sessionId,
-          latitude: 37.7749 + (Math.random() - 0.5) * 0.01,
-          longitude: -122.4194 + (Math.random() - 0.5) * 0.01,
-          accuracy: Math.random() * 20,
-          speed: Math.random() * 10,
-          heading: Math.random() * 360,
-          timestamp: new Date().toISOString()
-        });
-      }
-      addLog(`Inserted 10 points for session ${sessionId}`);
-    } catch (error) {
-      addLog(`Bulk insert error: ${error.message}`);
-    }
-  };
-
-  const readPoints = async () => {
+  const readUnsyncedPoints = async (showLog = true) => {
     try {
       const unsyncedPoints = await getUnsyncedPoints();
       setPoints(unsyncedPoints);
-      addLog(`Read ${unsyncedPoints.length} unsynced points`);
-    } catch (error) {
-      addLog(`Read error: ${error.message}`);
-    }
-  };
-
-  const getCounts = async () => {
-    try {
-      const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
-      const total = await db.getFirstAsync('SELECT COUNT(*) as count FROM locations');
-      const unsynced = await db.getFirstAsync('SELECT COUNT(*) as count FROM locations WHERE synced = 0');
-      const synced = await db.getFirstAsync('SELECT COUNT(*) as count FROM locations WHERE synced = 1');
-      addLog(`Total: ${total.count} | Unsynced: ${unsynced.count} | Synced: ${synced.count}`);
-    } catch (error) {
-      addLog(`Count error: ${error.message}`);
-    }
-  };
-
-  const simulateUpload = async () => {
-    try {
-      const unsyncedPoints = await getUnsyncedPoints();
-      if (unsyncedPoints.length === 0) {
-        addLog('No unsynced points to upload');
-        return;
+      if (showLog) {
+        await addDebugLog(`Read ${unsyncedPoints.length} unsynced location points`);
       }
-      const ids = unsyncedPoints.map(p => p.id);
-      await markAsSynced(ids);
-      addLog(`Simulated upload: marked ${ids.length} points as synced`);
-      setPoints([]);
+      return unsyncedPoints;
     } catch (error) {
-      addLog(`Upload simulation error: ${error.message}`);
+      await addDebugLog('Unsynced point read failed', {
+        message: error.message,
+      });
+      return [];
     }
   };
 
-  const clearDatabase = async () => {
-    Alert.alert(
-      'Clear Database',
-      'Are you sure you want to delete all location data?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
-              await db.execAsync('DELETE FROM locations');
-              setPoints([]);
-              addLog('Database cleared');
-            } catch (error) {
-              addLog(`Clear error: ${error.message}`);
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const clearLog = () => {
-    setLog([]);
-  };
-
-  const readNativeCrashLogs = async () => {
+  const readNativeCrashLogs = async (showLog = true) => {
     try {
       const result = await nativeCrashLogService.readLogs();
 
       if (!result.success) {
-        addLog(`Native crash read error: ${result.message}`);
-        return;
+        await addDebugLog('Native crash log read failed', {
+          message: result.message,
+        });
+        return [];
       }
 
       setNativeCrashLogs(result.data);
       if (result.path) {
         setNativeCrashLogPath(result.path);
       }
-      addLog(`Read ${result.data.length} native crash logs`);
+      if (showLog) {
+        await addDebugLog(`Read ${result.data.length} native crash logs`);
+      }
+      return result.data;
     } catch (error) {
-      addLog(`Native crash read error: ${error.message}`);
+      await addDebugLog('Native crash log read failed', {
+        message: error.message,
+      });
+      return [];
     }
   };
 
-  const clearNativeCrashLogs = async () => {
+  const readLocationDiagnostics = async (showLog = true) => {
     try {
-      const result = await nativeCrashLogService.clearLogs();
+      const result = await diagnosticsService.readLocationDiagnostics();
 
       if (!result.success) {
-        addLog(`Native crash clear error: ${result.message}`);
+        await addDebugLog('Location diagnostics read failed', {
+          message: result.message,
+        });
+        return [];
+      }
+
+      setLocationDiagnostics(result.data);
+      if (result.path) {
+        setLocationDiagnosticsPath(result.path);
+      }
+      if (showLog) {
+        await addDebugLog(`Read ${result.data.length} location diagnostics`);
+      }
+      return result.data;
+    } catch (error) {
+      await addDebugLog('Location diagnostics read failed', {
+        message: error.message,
+      });
+      return [];
+    }
+  };
+
+  const clearDebugEvidence = () => {
+    Alert.alert(
+      'Clear Debug Evidence',
+      'This clears only diagnostic/crash logs shown on this screen. It does not clear app data or the location database.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            const [crashResult, diagnosticResult] = await Promise.all([
+              nativeCrashLogService.clearLogs(),
+              diagnosticsService.clearLocationDiagnostics(),
+            ]);
+
+            setNativeCrashLogs([]);
+            setLocationDiagnostics([]);
+            setDebugLog([]);
+
+            await addDebugLog('Debug evidence cleared', {
+              crash_clear_success: crashResult.success,
+              diagnostic_clear_success: diagnosticResult.success,
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  const buildCopyReport = async () => {
+    const snapshot = await diagnosticsService.captureLocationDebugSnapshot();
+    const [crashes, diagnostics, unsyncedPoints, queuedErrors] = await Promise.all([
+      readNativeCrashLogs(false),
+      readLocationDiagnostics(false),
+      readUnsyncedPoints(false),
+      errorLogService.readQueuedLogs(),
+    ]);
+
+    return {
+      copied_at: new Date().toISOString(),
+      purpose: 'DDC Marketing active-session null-pointer diagnostic report',
+      snapshot,
+      screen_log: debugLog,
+      native_crash_logs_count: crashes.length,
+      native_crash_logs: crashes.slice(0, 25),
+      location_diagnostics_count: diagnostics.length,
+      location_diagnostics: diagnostics.slice(0, 75),
+      queued_error_logs_count: queuedErrors.length,
+      queued_error_logs: queuedErrors.slice(0, 25),
+      unsynced_location_count: unsyncedPoints.length,
+      unsynced_location_preview: unsyncedPoints.slice(0, 20),
+    };
+  };
+
+  const copyDebugReport = async () => {
+    try {
+      const report = await buildCopyReport();
+      const text = JSON.stringify(report, null, 2);
+      const result = await diagnosticsService.copyTextToClipboard(
+        'DDC session debug report',
+        text
+      );
+
+      if (!result.success) {
+        await addDebugLog('Copy debug report failed', {
+          message: result.message,
+        });
         return;
       }
 
-      setNativeCrashLogs([]);
-      addLog('Cleared native crash logs');
+      await addDebugLog('Debug report copied to clipboard', {
+        characters: text.length,
+      });
     } catch (error) {
-      addLog(`Native crash clear error: ${error.message}`);
+      await addDebugLog('Copy debug report failed', {
+        message: error.message,
+      });
     }
   };
 
@@ -375,99 +360,85 @@ const DebugScreen = () => {
     return `[${timestamp}] ${source}:${event} ${detailText.slice(0, 500)}`;
   };
 
+  const formatDebugLogEntry = (entry) => {
+    const details = entry.details ? ` ${JSON.stringify(entry.details)}` : '';
+    return `[${entry.timestamp}] ${entry.message}${details}`;
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Debug Screen</Text>
+      <Text style={styles.title}>Session Debug</Text>
       <Text style={styles.diagnosticStatusText}>{getDiagnosticsStatusText()}</Text>
 
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={insertFakePoint}>
-          <Text style={styles.buttonText}>Insert 1</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={insertBulkPoints}>
-          <Text style={styles.buttonText}>Insert 10</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={readPoints}>
-          <Text style={styles.buttonText}>Read</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={getCounts}>
-          <Text style={styles.buttonText}>Counts</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={simulateUpload}>
-          <Text style={styles.buttonText}>Sim Upload</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearDatabase}>
-          <Text style={styles.buttonText}>Clear DB</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={readNativeCrashLogs}>
-          <Text style={styles.buttonText}>Read Crashes</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearNativeCrashLogs}>
-          <Text style={styles.buttonText}>Clear Crashes</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={enableLocationDiagnostics}>
-          <Text style={styles.buttonText}>Enable Diag</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={disableLocationDiagnostics}>
-          <Text style={styles.buttonText}>Disable</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={captureLocationSnapshot}>
-          <Text style={styles.buttonText}>Snapshot</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={readLocationDiagnostics}>
-          <Text style={styles.buttonText}>Read Diag</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={uploadDiagnostics}>
-          <Text style={styles.buttonText}>Upload</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearLocationDiagnostics}>
-          <Text style={styles.buttonText}>Clear Diag</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={[styles.button, styles.warningButton]} onPress={resetBackgroundLocationTask}>
-          <Text style={styles.buttonText}>Reset Task</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={refreshDiagnosticsStatus}>
-          <Text style={styles.buttonText}>Status</Text>
-        </TouchableOpacity>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Active Session Crash Tools</Text>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.button} onPress={startSessionDiagnostics}>
+            <Text style={styles.buttonText}>Start Debug</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => captureSessionSnapshot()}>
+            <Text style={styles.buttonText}>Snapshot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={copyDebugReport}>
+            <Text style={styles.buttonText}>Copy</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={[styles.button, styles.warningButton]} onPress={resetBackgroundLocationTask}>
+            <Text style={styles.buttonText}>Reset Task</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={stopSessionDiagnostics}>
+            <Text style={styles.buttonText}>Stop Debug</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.button} onPress={() => readNativeCrashLogs()}>
+            <Text style={styles.buttonText}>Read Crashes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => readLocationDiagnostics()}>
+            <Text style={styles.buttonText}>Read Diag</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => readUnsyncedPoints()}>
+            <Text style={styles.buttonText}>Read Points</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearDebugEvidence}>
+            <Text style={styles.buttonText}>Clear Evidence</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={refreshDiagnosticsStatus}>
+            <Text style={styles.buttonText}>Status</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Log</Text>
-          <TouchableOpacity onPress={clearLog}>
-            <Text style={styles.clearText}>Clear</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.sectionTitle}>Debug Session Log ({debugLog.length})</Text>
         <ScrollView style={styles.logContainer}>
-          {log.map((entry, index) => (
-            <Text key={index} style={styles.logText}>{entry}</Text>
-          ))}
+          {debugLog.length === 0 ? (
+            <Text style={styles.emptyText}>No debug events yet.</Text>
+          ) : (
+            debugLog.map((entry, index) => (
+              <Text key={index} style={styles.logText}>
+                {formatDebugLogEntry(entry)}
+              </Text>
+            ))
+          )}
         </ScrollView>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Unsynced Points ({points.length})</Text>
+        <Text style={styles.sectionTitle}>Unsynced Session Points ({points.length})</Text>
         <ScrollView style={styles.pointsContainer}>
-          {points.map((point, index) => (
-            <Text key={index} style={styles.pointText}>
-              #{point.id} | S:{point.session_id} | {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
-            </Text>
-          ))}
+          {points.length === 0 ? (
+            <Text style={styles.emptyText}>No unsynced points found.</Text>
+          ) : (
+            points.map((point, index) => (
+              <Text key={index} style={styles.pointText}>
+                #{point.id} | S:{point.session_id} | {Number(point.latitude).toFixed(4)}, {Number(point.longitude).toFixed(4)} | {point.timestamp}
+              </Text>
+            ))
+          )}
         </ScrollView>
       </View>
 
@@ -517,29 +488,29 @@ const DebugScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a'
+    backgroundColor: '#1a1a1a',
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 32
+    paddingBottom: 32,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 16,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   diagnosticStatusText: {
     color: '#d1d5db',
     fontSize: 12,
     marginBottom: 12,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8
+    marginBottom: 8,
   },
   button: {
     flex: 1,
@@ -547,71 +518,62 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginHorizontal: 4,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   dangerButton: {
-    backgroundColor: '#8b0000'
+    backgroundColor: '#8b0000',
   },
   warningButton: {
-    backgroundColor: '#92400e'
+    backgroundColor: '#92400e',
   },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   section: {
     marginTop: 12,
-    minHeight: 120
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
+    minHeight: 120,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#888',
-    marginBottom: 8
-  },
-  clearText: {
-    color: '#666',
-    fontSize: 14
+    marginBottom: 8,
   },
   logContainer: {
     backgroundColor: '#000',
     borderRadius: 8,
     padding: 8,
-    maxHeight: 160
+    maxHeight: 180,
   },
   logText: {
     color: '#0f0',
     fontFamily: 'monospace',
-    fontSize: 12,
-    marginBottom: 4
+    fontSize: 11,
+    marginBottom: 4,
   },
   pointsContainer: {
     backgroundColor: '#000',
     borderRadius: 8,
     padding: 8,
-    maxHeight: 160
+    maxHeight: 180,
   },
   pointText: {
     color: '#0ff',
     fontFamily: 'monospace',
     fontSize: 11,
-    marginBottom: 2
+    marginBottom: 2,
   },
   metaText: {
     color: '#9ca3af',
     fontSize: 11,
-    marginBottom: 6
+    marginBottom: 6,
   },
   emptyText: {
     color: '#9ca3af',
-    fontSize: 12
-  }
+    fontSize: 12,
+  },
 });
 
 export default DebugScreen;

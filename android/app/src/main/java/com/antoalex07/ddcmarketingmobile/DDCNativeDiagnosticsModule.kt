@@ -1,6 +1,8 @@
 package com.antoalex07.ddcmarketingmobile
 
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -126,6 +128,17 @@ class DDCNativeDiagnosticsModule(
       promise.resolve(true)
     } catch (error: Exception) {
       promise.reject("DDC_DIAGNOSTICS_CLEAR_FAILED", error)
+    }
+  }
+
+  @ReactMethod
+  fun copyTextToClipboard(label: String, text: String, promise: Promise) {
+    try {
+      val clipboard = reactContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+      clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject("DDC_CLIPBOARD_COPY_FAILED", error)
     }
   }
 }

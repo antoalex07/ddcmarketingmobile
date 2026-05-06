@@ -12,42 +12,31 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/AuthService';
-import { appointmentService } from '../services/AppointmentService';
 
 const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, setStaffInfo } = useAuth();
+  const { login } = useAuth();
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both username and password');
+    const name = displayName.trim();
+
+    if (!name) {
+      Alert.alert('Error', 'Enter a name to open the local session debugger');
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await authService.login(username, password);
-
-      if (result.success) {
-        const { user, token, refreshToken } = result.data;
-        await login(user, token, refreshToken);
-
-        // Fetch and cache staff details using the logged-in userId
-        const staffResult = await appointmentService.getStaffDetails(token);
-        if (staffResult.success && staffResult.data?.staff) {
-          await setStaffInfo(staffResult.data.staff);
-        }
-
-        navigation.replace('Session');
-      } else {
-        Alert.alert('Login Failed', result.message);
-      }
+      await login({
+        userId: name,
+        userName: name,
+        roleId: 'debug',
+      });
+      navigation.replace('Session');
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      Alert.alert('Error', error?.message || 'Could not open the local session debugger');
     } finally {
       setLoading(false);
     }
@@ -64,34 +53,22 @@ const LoginScreen = ({ navigation }) => {
       >
         <View style={styles.formContainer}>
           <View style={styles.headerContainer}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue</Text>
+            <Text style={styles.title}>Local Session Debug</Text>
+            <Text style={styles.subtitle}>Enter any name to open the offline session tools</Text>
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Username</Text>
+            <Text style={styles.label}>Display name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your username"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
+              placeholder="Enter a name"
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
               autoCorrect={false}
               editable={!loading}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
           </View>
 
@@ -103,7 +80,7 @@ const LoginScreen = ({ navigation }) => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Login</Text>
+              <Text style={styles.buttonText}>Open Session</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -148,6 +125,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#6b7280',
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 20,

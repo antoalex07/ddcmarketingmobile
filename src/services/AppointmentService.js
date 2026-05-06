@@ -1,246 +1,63 @@
-import api from '../config/api';
+const emptyList = [];
+
+const disabled = (message = 'Backend is disabled in this build') => ({
+  success: false,
+  message,
+});
 
 export const appointmentService = {
-  getStaffDetails: async (token) => {
-    try {
-      console.log('Fetching staff details...');
-      const response = await api.get('/staff/getstaff', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  getStaffDetails: async () => ({
+    success: true,
+    data: { staff: null },
+  }),
 
-      console.log('Staff details fetched successfully');
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error('Error fetching staff details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        code: error.code,
-      });
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch staff details',
-      };
-    }
-  },
+  getStaffDetailsByUserId: async () => ({
+    success: true,
+    data: { staff: null },
+  }),
 
-  getStaffDetailsByUserId: async (token, userId) => {
-    try {
-      const response = await api.get(`/staff/getstaff/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch staff details',
-      };
-    }
-  },
+  getDoctorsByStaff: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-  getDoctorsByStaff: async (token, staffId) => {
-    try {
-      const response = await api.get(`/appointment/bystaff/${staffId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch doctors',
-      };
-    }
-  },
+  getHospitalsByStaff: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-  getHospitalsByStaff: async (token, staffId) => {
-    try {
-      const response = await api.get(`/appointment/hospitalbystaff/${staffId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch hospitals',
-      };
-    }
-  },
+  getClinicsByStaff: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-  getClinicsByStaff: async (token, staffId) => {
-    try {
-      const response = await api.get(`/appointment/clinicbystaff/${staffId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch clinics',
-      };
-    }
-  },
+  createDoctor: async () => disabled(),
 
-  createDoctor: async (token, data) => {
-    try {
-      const response = await api.post('/doctors/adddoctor', data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to add doctor',
-      };
-    }
-  },
+  createHospital: async () => disabled(),
 
-  createHospital: async (token, data) => {
-    try {
-      const response = await api.post('/hospital/addhospital', data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to add hospital',
-      };
-    }
-  },
+  createClinic: async () => disabled(),
 
-  createClinic: async (token, data) => {
-    try {
-      const response = await api.post('/clinic/addclinic', data, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to add clinic',
-      };
-    }
-  },
+  getAppointments: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-  getAppointments: async (token, staffId) => {
-    try {
-      console.log('Fetching appointments for staffId:', staffId);
-      const response = await api.get(`/appointment/getallappointments/${staffId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  updateAppointment: async () => disabled(),
 
-      console.log('Appointments fetched successfully:', response.data);
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error('Error fetching appointments:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        code: error.code,
-      });
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch appointments',
-      };
-    }
-  },
+  getCountries: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-  updateAppointment: async (token, appointmentData) => {
-    try {
-      console.log('Updating appointment with data:', appointmentData);
-      const response = await api.post('/appointment/updateappointmentstatus', appointmentData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  getStates: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-      console.log('Appointment updated successfully:', response.data);
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      console.error('Error updating appointment:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        code: error.code,
-      });
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to update appointment',
-      };
-    }
-  },
+  getDistricts: async () => ({
+    success: true,
+    data: emptyList,
+  }),
 
-  getCountries: async (token) => {
-    try {
-      const response = await api.get('/staff/getallcountry', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch countries',
-      };
-    }
-  },
-
-  getStates: async (token, countryId) => {
-    try {
-      const response = await api.get(`/staff/getstates/${countryId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch states',
-      };
-    }
-  },
-
-  getDistricts: async (token, stateId) => {
-    try {
-      const response = await api.get(`/staff/getdistricts/${stateId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to fetch districts',
-      };
-    }
-  },
-
-  createAppointment: async (token, appointmentData) => {
-    try {
-      const response = await api.post('/appointment/addappointment', appointmentData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || error.message || 'Failed to create appointment',
-      };
-    }
-  },
+  createAppointment: async () => disabled(),
 };

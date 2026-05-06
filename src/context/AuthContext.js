@@ -1,9 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { errorLogService } from '../services/errorLogService';
-import { tokenStorage } from '../services/tokenStorage';
-import { authService } from '../services/AuthService';
-import { setApiAuthFailureHandler } from '../config/api';
 import { stopTracking } from '../services/TrackingController';
 
 const AuthContext = createContext();
@@ -32,10 +28,11 @@ export const AuthProvider = ({ children }) => {
     const [stopTrackingResult, clearStorageResult] = await Promise.allSettled([
       stopTracking(),
       Promise.all([
-        tokenStorage.clearTokens(),
         AsyncStorage.removeItem('user'),
         AsyncStorage.removeItem('staff_data'),
         AsyncStorage.removeItem('active_session_id'),
+        AsyncStorage.removeItem('session_start_time'),
+        AsyncStorage.removeItem('session_end_time'),
       ]),
     ]);
 
@@ -50,24 +47,14 @@ export const AuthProvider = ({ children }) => {
 
   // Restore persisted auth + staff on app start
   useEffect(() => {
-    setApiAuthFailureHandler(async () => {
-      try {
-        await clearAuthStorage();
-      } finally {
-        clearAuthState();
-      }
-    });
-
     const restoreAuth = async () => {
       try {
-        const storedToken = await tokenStorage.getAccessToken();
         const storedUser = await AsyncStorage.getItem('user');
         const storedStaff = await AsyncStorage.getItem('staff_data');
 
-        if (storedToken && storedUser) {
-          setToken(storedToken);
+        if (storedUser) {
+          setToken('local-debug-token');
           setUser(JSON.parse(storedUser));
-          errorLogService.flushPendingLogs();
         }
         if (storedStaff) {
           setStaffData(JSON.parse(storedStaff));
@@ -80,22 +67,13 @@ export const AuthProvider = ({ children }) => {
     };
 
     restoreAuth();
-
-    return () => {
-      setApiAuthFailureHandler(null);
-    };
   }, []);
 
-  const login = async (userData, authToken, refreshToken) => {
+  const login = async (userData, authToken = 'local-debug-token') => {
     try {
-      await tokenStorage.setTokens({
-        accessToken: authToken,
-        refreshToken,
-      });
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setToken(authToken);
       setUser(userData);
-      errorLogService.flushPendingLogs();
     } catch (error) {
       throw error;
     }
@@ -112,12 +90,6 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      const refreshToken = await tokenStorage.getRefreshToken();
-
-      if (refreshToken) {
-        await authService.logout(refreshToken, token);
-      }
-
       await clearAuthStorage();
       clearAuthState();
     } catch (error) {
@@ -129,14 +101,12 @@ export const AuthProvider = ({ children }) => {
   const loadStoredAuth = async () => {
     try {
       setLoading(true);
-      const storedToken = await tokenStorage.getAccessToken();
       const storedUser = await AsyncStorage.getItem('user');
       const storedStaff = await AsyncStorage.getItem('staff_data');
 
-      if (storedToken && storedUser) {
-        setToken(storedToken);
+      if (storedUser) {
+        setToken('local-debug-token');
         setUser(JSON.parse(storedUser));
-        errorLogService.flushPendingLogs();
       }
       if (storedStaff) {
         setStaffData(JSON.parse(storedStaff));

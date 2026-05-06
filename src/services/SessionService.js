@@ -1,268 +1,118 @@
-import api from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SESSION_ID_KEYS = ['sessionId', 'session_id', 'id', 'active_session_id'];
-const STARTED_AT_KEYS = [
-  'startedAt',
-  'started_at',
-  'session_start_time',
-  'session_start',
-  'start_time',
-  'session_started_at',
-];
-const ENDED_AT_KEYS = [
-  'endedAt',
-  'ended_at',
-  'session_end_time',
-  'session_end',
-  'end_time',
-  'session_ended_at',
-];
-const MESSAGE_KEYS = ['message', 'error', 'detail'];
-const ACTIVE_FLAG_KEYS = [
-  'active',
-  'is_active',
-  'has_active_session',
-  'hasActiveSession',
-  'session_active',
-];
-
-const getContainers = (payload) => {
-  if (!payload || typeof payload !== 'object') {
-    return [];
-  }
-
-  return [
-    payload,
-    payload.data,
-    payload.session,
-    payload.active_session,
-  ].filter((item) => item && typeof item === 'object');
-};
-
-const getField = (payload, keys) => {
-  const containers = getContainers(payload);
-
-  for (const container of containers) {
-    for (const key of keys) {
-      const value = container[key];
-      if (value !== undefined && value !== null && value !== '') {
-        return value;
-      }
-    }
-  }
-
-  return null;
-};
+const SESSION_ID_KEY = 'active_session_id';
+const SESSION_START_TIME_KEY = 'session_start_time';
+const SESSION_END_TIME_KEY = 'session_end_time';
 
 const parseSessionId = (value) => {
-  if (value === null || value === undefined || value === '') {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getCurrentTimestamp = () => new Date().toISOString();
+
+const readLocalSession = async () => {
+  const [storedSessionId, storedStartTime, storedEndTime] = await Promise.all([
+    AsyncStorage.getItem(SESSION_ID_KEY),
+    AsyncStorage.getItem(SESSION_START_TIME_KEY),
+    AsyncStorage.getItem(SESSION_END_TIME_KEY),
+  ]);
+
+  const sessionId = parseSessionId(storedSessionId);
+  if (!sessionId) {
     return null;
   }
 
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const parseActiveFlag = (value) => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value === 'number') {
-    return value === 1;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
-      return true;
-    }
-    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
-      return false;
-    }
-  }
-
-  return null;
-};
-
-const buildSessionData = (payload) => {
-  const sessionId = parseSessionId(getField(payload, SESSION_ID_KEYS));
-  const startedAt = getField(payload, STARTED_AT_KEYS);
-  const endedAt = getField(payload, ENDED_AT_KEYS);
-  const active = parseActiveFlag(getField(payload, ACTIVE_FLAG_KEYS));
-
   return {
     sessionId,
-    startedAt,
-    endedAt,
-    active,
+    startedAt: storedStartTime || getCurrentTimestamp(),
+    endedAt: storedEndTime || null,
   };
 };
 
-const getErrorMessage = (error, fallbackMessage) => {
-  const message = getField(error?.response?.data, MESSAGE_KEYS);
-  return message || fallbackMessage;
-};
+const createSessionId = () => Date.now();
 
 export const sessionService = {
-  startSession: async (token) => {
-    try {
-      const response = await api.post(
-        '/sessions/start',
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const session = buildSessionData(response.data);
-
+  startSession: async () => {
+    const existingSession = await readLocalSession();
+    if (existingSession) {
       return {
         success: true,
+        sessionId: existingSession.sessionId,
+        startedAt: existingSession.startedAt,
+      };
+    }
+
+    const sessionId = createSessionId();
+    const startedAt = getCurrentTimestamp();
+
+    await Promise.all([
+      AsyncStorage.setItem(SESSION_ID_KEY, String(sessionId)),
+      AsyncStorage.setItem(SESSION_START_TIME_KEY, startedAt),
+      AsyncStorage.removeItem(SESSION_END_TIME_KEY),
+    ]);
+
+    return {
+      success: true,
+      sessionId,
+      startedAt,
+    };
+  },
+
+  stopSession: async () => {
+    const activeSession = await readLocalSession();
+    if (!activeSession) {
+      return {
+        success: false,
+        message: 'No active local session found',
+      };
+    }
+
+    const endedAt = getCurrentTimestamp();
+
+    await Promise.all([
+      AsyncStorage.removeItem(SESSION_ID_KEY),
+      AsyncStorage.removeItem(SESSION_START_TIME_KEY),
+      AsyncStorage.setItem(SESSION_END_TIME_KEY, endedAt),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        sessionId: activeSession.sessionId,
+        startedAt: activeSession.startedAt,
+        endedAt,
+      },
+    };
+  },
+
+  getActiveSession: async () => {
+    const session = await readLocalSession();
+
+    if (!session) {
+      return {
+        success: true,
+        session: null,
+      };
+    }
+
+    return {
+      success: true,
+      session: {
         sessionId: session.sessionId,
         startedAt: session.startedAt,
-      };
-    } catch (error) {
-      if (error.response) {
-        const status = error.response.status;
-        const message = getErrorMessage(error, 'Failed to start session. Please try again.');
-
-        if (status === 409) {
-          return {
-            success: false,
-            status,
-            message: message || 'Session already active',
-          };
-        }
-      }
-
-      return {
-        success: false,
-        status: error.response?.status || null,
-        message: getErrorMessage(error, 'Failed to start session. Please try again.'),
-      };
-    }
+      },
+    };
   },
 
-  stopSession: async (token) => {
-    try {
-      const response = await api.post(
-        '/sessions/stop',
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const session = buildSessionData(response.data);
-
-      return {
-        success: true,
-        data: {
-          sessionId: session.sessionId,
-          startedAt: session.startedAt,
-          endedAt: session.endedAt,
-        },
-      };
-    } catch (error) {
-      if (error.response) {
-        const status = error.response.status;
-        const message = getErrorMessage(error, 'Failed to stop session. Please try again.');
-
-        if (status === 400) {
-          return {
-            success: false,
-            status,
-            message: message || 'No active session found',
-          };
-        }
-      }
-
-      return {
-        success: false,
-        status: error.response?.status || null,
-        message: getErrorMessage(error, 'Failed to stop session. Please try again.'),
-      };
-    }
-  },
-
-  getActiveSession: async (token) => {
-    try {
-      const response = await api.get('/sessions/active', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const session = buildSessionData(response.data);
-
-      if (session.sessionId === null) {
-        if (session.active === false) {
-          return {
-            success: true,
-            session: null,
-          };
-        }
-
-        // If API returns 200 without session identifiers, treat as no active session.
-        return {
-          success: true,
-          session: null,
-        };
-      }
-
-      return {
-        success: true,
-        session: {
-          sessionId: session.sessionId,
-          startedAt: session.startedAt,
-        },
-      };
-    } catch (error) {
-      if (error.response?.status === 404) {
-        // No active session
-        return {
-          success: true,
-          session: null,
-        };
-      }
-
-      return {
-        success: false,
-        status: error.response?.status || null,
-        message: getErrorMessage(error, 'Failed to fetch active session'),
-      };
-    }
-  },
-
-  sendLocationBulk: async (token, sessionId, points) => {
-    try {
-      const response = await api.post(
-        '/sessions/locations/bulk',
-        {
-          sessionId,
-          points,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Failed to send location data',
-      };
-    }
+  sendLocationBulk: async (_token, sessionId, points) => {
+    return {
+      success: true,
+      data: {
+        sessionId,
+        uploaded: Array.isArray(points) ? points.length : 0,
+        backend_disabled: true,
+      },
+    };
   },
 };
