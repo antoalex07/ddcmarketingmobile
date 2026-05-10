@@ -1,8 +1,30 @@
 diff --git a/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt b/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
-index e659285..da1f5ee 100644
+index e659285..09342df 100644
 --- a/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
 +++ b/node_modules/expo-location/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
-@@ -33,7 +33,14 @@ import expo.modules.location.records.LocationOptions
+@@ -1,5 +1,6 @@
+ package expo.modules.location.taskConsumers
+ 
++import android.Manifest
+ import android.app.PendingIntent
+ import android.app.job.JobParameters
+ import android.app.job.JobService
+@@ -7,12 +8,14 @@ import android.content.ComponentName
+ import android.content.Context
+ import android.content.Intent
+ import android.content.ServiceConnection
++import android.content.pm.PackageManager
+ import android.location.Location
+ import android.os.Build
+ import android.os.Bundle
+ import android.os.IBinder
+ import android.os.PersistableBundle
+ import android.util.Log
++import androidx.core.content.ContextCompat
+ import com.google.android.gms.location.FusedLocationProviderClient
+ import com.google.android.gms.location.LocationRequest
+ import com.google.android.gms.location.LocationResult
+@@ -33,7 +36,14 @@ import expo.modules.location.records.LocationOptions
  import expo.modules.location.records.LocationResponse
  import expo.modules.location.services.LocationTaskService
  import expo.modules.location.services.LocationTaskService.ServiceBinder
@@ -17,7 +39,25 @@ index e659285..da1f5ee 100644
  
  class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsInterface?) : TaskConsumer(context, taskManagerUtils), TaskConsumerInterface, LifecycleEventListener {
    private var mTask: TaskInterface? = null
-@@ -100,26 +107,205 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+@@ -80,6 +90,17 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+ 
+   override fun didReceiveBroadcast(intent: Intent) {
+     mTask ?: return
++    if (!hasLocationPermission()) {
++      Log.w(TAG, "Skipping location broadcast because location permission is missing.")
++      persistLocationDiagnostic(
++        "broadcast_skipped_missing_permission",
++        JSONObject().put("has_pending_intent", mPendingIntent != null),
++        force = true
++      )
++      removePendingLocationUpdatesSafely("broadcast_missing_permission")
++      return
++    }
++
+     val result = LocationResult.extractResult(intent)
+     if (result != null) {
+       val locations = result.locations
+@@ -100,26 +121,254 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
    }
  
    override fun didExecuteJob(jobService: JobService, params: JobParameters): Boolean {
@@ -32,6 +72,18 @@ index e659285..da1f5ee 100644
 -        locationBundle.putBundle("coords", coordsBundle)
 -        locationBundles.add(locationBundle)
 +    return try {
++      if (!hasLocationPermission()) {
++        Log.w(TAG, "Skipping location job because location permission is missing.")
++        persistLocationDiagnostic(
++          "job_skipped_missing_permission",
++          describeJobParams(params).put("has_pending_intent", mPendingIntent != null),
++          force = true
++        )
++        removePendingLocationUpdatesSafely("job_missing_permission")
++        finishJobSafely(jobService, params)
++        return false
++      }
++
 +      persistLocationDiagnostic("job_start", describeJobParams(params))
 +      val data = taskManagerUtils.extractDataFromJobParams(params)
 +      val locationBundles = ArrayList<Bundle>()
@@ -234,10 +286,47 @@ index e659285..da1f5ee 100644
 +    return details
 +  }
 +
++  private fun hasLocationPermission(): Boolean {
++    val appContext = context?.applicationContext ?: return false
++    val fineGranted = ContextCompat.checkSelfPermission(
++      appContext,
++      Manifest.permission.ACCESS_FINE_LOCATION
++    ) == PackageManager.PERMISSION_GRANTED
++    val coarseGranted = ContextCompat.checkSelfPermission(
++      appContext,
++      Manifest.permission.ACCESS_COARSE_LOCATION
++    ) == PackageManager.PERMISSION_GRANTED
++
++    return fineGranted || coarseGranted
++  }
++
++  private fun removePendingLocationUpdatesSafely(reason: String) {
++    val pendingIntent = mPendingIntent ?: return
++
++    try {
++      mLocationClient.removeLocationUpdates(pendingIntent)
++      pendingIntent.cancel()
++      persistLocationDiagnostic(
++        "pending_location_updates_removed",
++        JSONObject().put("reason", reason),
++        force = true
++      )
++    } catch (error: Exception) {
++      Log.w(TAG, "Failed to remove pending location updates after skipped location task.", error)
++      persistLocationDiagnostic(
++        "pending_location_updates_remove_failed",
++        describeThrowable(error).put("reason", reason),
++        force = true
++      )
++    } finally {
++      mPendingIntent = null
++    }
++  }
++
    private fun startLocationUpdates() {
      val context = context ?: run {
        Log.w(TAG, "The context has been abandoned")
-@@ -289,15 +475,57 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+@@ -289,15 +538,57 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
    }
  
    private fun executeTaskWithLocationBundles(locationBundles: ArrayList<Bundle>, callback: TaskExecutionCallback) {
@@ -299,7 +388,7 @@ index e659285..da1f5ee 100644
    override fun onHostResume() {
      mIsHostPaused = false
      maybeReportDeferredLocations()
-@@ -314,6 +542,11 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+@@ -314,6 +605,11 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
    companion object {
      private const val TAG = "LocationTaskConsumer"
      private const val FOREGROUND_SERVICE_KEY = "foregroundService"

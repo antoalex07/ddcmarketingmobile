@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { stopTracking } from '../services/TrackingController';
+import { hardStopTracking } from '../services/TrackingController';
 
 const AuthContext = createContext();
 
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
   const clearAuthStorage = async () => {
     const [stopTrackingResult, clearStorageResult] = await Promise.allSettled([
-      stopTracking(),
+      hardStopTracking('logout'),
       Promise.all([
         AsyncStorage.removeItem('user'),
         AsyncStorage.removeItem('staff_data'),

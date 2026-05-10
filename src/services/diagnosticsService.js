@@ -8,6 +8,7 @@ import * as TaskManager from 'expo-task-manager';
 import { getUnsyncedCount } from '../db/locationDB';
 import { nativeCrashLogService } from './nativeCrashLogService';
 import { LOCATION_TASK_NAME } from './locationTaskConstants';
+import { getLocationUploadStatus } from './LocationUploader';
 
 const LOCATION_DIAGNOSTICS_FILE_NAME = 'location_diagnostics.jsonl';
 const LOCATION_DIAGNOSTICS_ENABLED_KEY = 'location_diagnostics_enabled';
@@ -433,6 +434,7 @@ export const diagnosticsService = {
       assignResult('active_session_id', () => AsyncStorage.getItem('active_session_id')),
       assignResult('pending_session_stop', () => AsyncStorage.getItem('pending_session_stop')),
       assignResult('last_successful_upload', () => AsyncStorage.getItem('last_successful_upload')),
+      assignResult('location_upload_status', () => getLocationUploadStatus()),
       assignResult('unsynced_location_count', () => getUnsyncedCount()),
       assignResult('diagnostics_status', () =>
         diagnosticsService.getLocationDiagnosticsStatus()

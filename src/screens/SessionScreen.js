@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,7 +18,13 @@ import {
   openLocationSettings,
   checkLocationStatus,
 } from '../utils/locationPermissions';
-import { startTracking, stopTracking, isTracking } from '../services/TrackingController';
+import {
+  startTracking,
+  hardStopTracking,
+  isTracking,
+  reconcileLocationTrackingState,
+  getTrackingPreconditionStatus,
+} from '../services/TrackingController';
 import { promptBatteryOptimization } from '../utils/batteryOptimization';
 
 const SESSION_ID_KEY = 'active_session_id';
@@ -32,23 +39,18 @@ const SessionScreen = ({ navigation }) => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isRestoring, setIsRestoring] = useState(true);
   const [locationHealthy, setLocationHealthy] = useState(true);
+  const [recoveryMessage, setRecoveryMessage] = useState(null);
 
-  const clearLocalSessionState = async () => {
-    await Promise.allSettled([
-      AsyncStorage.removeItem(SESSION_ID_KEY),
-      AsyncStorage.removeItem(SESSION_START_KEY),
-      AsyncStorage.removeItem('session_end_time'),
-    ]);
-
-    const trackingActive = await isTracking();
-    if (trackingActive) {
-      await stopTracking();
-    }
-
+  const resetSessionUiState = () => {
     setSessionActive(false);
     setSessionId(null);
     setSessionStartTime(null);
     setElapsedTime(0);
+  };
+
+  const clearLocalSessionState = async () => {
+    await hardStopTracking('session_screen_clear_local_state');
+    resetSessionUiState();
   };
 
   const toValidDate = (value) => {
@@ -64,8 +66,22 @@ const SessionScreen = ({ navigation }) => {
     const restoreSession = async () => {
       setIsRestoring(true);
       try {
+        const reconciliation = await reconcileLocationTrackingState('session_screen_restore');
+        if (reconciliation.changed && !reconciliation.valid) {
+          setRecoveryMessage('Location permission changed. Tracking was stopped; grant permissions before starting a new session.');
+          resetSessionUiState();
+          return;
+        }
+
         const response = await sessionService.getActiveSession();
         if (response.success && response.session) {
+          const preconditions = await getTrackingPreconditionStatus();
+          if (!preconditions.valid) {
+            await clearLocalSessionState();
+            setRecoveryMessage('Location permissions or services are unavailable. Grant permissions before starting a new session.');
+            return;
+          }
+
           const activeSession = response.session;
           setSessionActive(true);
           setSessionId(activeSession.sessionId);
@@ -80,6 +96,7 @@ const SessionScreen = ({ navigation }) => {
         }
       } catch (error) {
         await clearLocalSessionState();
+        setRecoveryMessage('Session restore failed. Tracking was stopped locally.');
       } finally {
         setIsRestoring(false);
       }
@@ -104,6 +121,25 @@ const SessionScreen = ({ navigation }) => {
   }, [sessionActive, sessionStartTime]);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState !== 'active') {
+        return;
+      }
+
+      const reconciliation = await reconcileLocationTrackingState('app_foreground');
+      if (reconciliation.changed && !reconciliation.valid) {
+        resetSessionUiState();
+        setLocationHealthy(false);
+        setRecoveryMessage('Location permission changed. Tracking was stopped; grant permissions before starting a new session.');
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!sessionActive) {
       setLocationHealthy(true);
       return undefined;
@@ -116,10 +152,14 @@ const SessionScreen = ({ navigation }) => {
         if (!cancelled) {
           setLocationHealthy(Boolean(status.isFullyFunctional));
           if (!status.isFullyFunctional) {
+            await hardStopTracking('active_session_location_invalid');
+            resetSessionUiState();
+            setRecoveryMessage('Location permission changed. Tracking was stopped; grant permissions before starting a new session.');
+
             if (!status.servicesEnabled) {
               Alert.alert(
                 'Location Services Disabled',
-                'Enable location services to keep the session tracking.',
+                'Tracking was stopped. Enable location services before starting a new session.',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: openLocationSettings },
@@ -128,7 +168,7 @@ const SessionScreen = ({ navigation }) => {
             } else if (!status.permissionsGranted) {
               Alert.alert(
                 'Location Permission Required',
-                'Grant location permissions to keep the session tracking.',
+                'Tracking was stopped. Grant location permissions before starting a new session.',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: openSettings },
@@ -168,6 +208,7 @@ const SessionScreen = ({ navigation }) => {
 
     try {
       const { granted, canAskAgain, locationDisabled, error } = await requestLocationPermissions();
+      setRecoveryMessage(null);
 
       if (!granted) {
         if (locationDisabled) {
@@ -241,8 +282,8 @@ const SessionScreen = ({ navigation }) => {
         onPress: async () => {
           setLoading(true);
           try {
-            await stopTracking();
             const result = await sessionService.stopSession();
+            await hardStopTracking('session_screen_stop_session');
             await clearLocalSessionState();
 
             if (result.success) {
@@ -336,6 +377,10 @@ const SessionScreen = ({ navigation }) => {
                 </Text>
               </View>
             )}
+
+            {!sessionActive && recoveryMessage ? (
+              <Text style={styles.recoveryText}>{recoveryMessage}</Text>
+            ) : null}
           </View>
 
           <View style={styles.buttonGrid}>
@@ -497,6 +542,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
     marginTop: 4,
+  },
+  recoveryText: {
+    color: '#92400e',
+    fontSize: 13,
+    marginTop: 16,
   },
   buttonGrid: {
     gap: 12,

@@ -12,7 +12,13 @@ import { getUnsyncedPoints } from '../db/locationDB';
 import { errorLogService } from '../services/errorLogService';
 import { nativeCrashLogService } from '../services/nativeCrashLogService';
 import { diagnosticsService } from '../services/diagnosticsService';
-import { startTracking, stopTracking, isTracking } from '../services/TrackingController';
+import {
+  startTracking,
+  stopTracking,
+  isTracking,
+  getTrackingPreconditionStatus,
+  reconcileLocationTrackingState,
+} from '../services/TrackingController';
 
 const SESSION_ID_KEY = 'active_session_id';
 const MAX_VISIBLE_LOGS = 120;
@@ -166,6 +172,18 @@ const DebugScreen = () => {
 
               const parsedSessionId = parseInt(sessionId, 10);
               if (!Number.isNaN(parsedSessionId) && parsedSessionId > 0) {
+                const preconditions = await getTrackingPreconditionStatus();
+                if (!preconditions.valid) {
+                  await reconcileLocationTrackingState('debug_reset_invalid_preconditions');
+                  await addDebugLog('Background task stopped; tracking preconditions are invalid', {
+                    active_session_id: parsedSessionId,
+                    preconditions,
+                    was_tracking: trackingActive,
+                  });
+                  await captureSessionSnapshot('Snapshot after invalid background task reset');
+                  return;
+                }
+
                 await startTracking();
                 await addDebugLog('Background task reset and restarted', {
                   active_session_id: parsedSessionId,

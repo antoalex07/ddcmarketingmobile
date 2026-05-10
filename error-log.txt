@@ -1,0 +1,2391 @@
+﻿{
+  "copied_at": "2026-05-07T04:54:37.261Z",
+  "purpose": "DDC Marketing active-session null-pointer diagnostic report",
+  "snapshot": {
+    "captured_at": "2026-05-07T04:54:37.142Z",
+    "app_version": "1.0.2",
+    "patch_level": "location-job-diagnostics-v2",
+    "platform": "android",
+    "platform_version": "35",
+    "location_task_name": "background-location-task",
+    "task_defined": true,
+    "task_manager_available": true,
+    "tracking_started": true,
+    "unsynced_location_count": 113,
+    "network": {
+      "type": "cellular",
+      "is_connected": true,
+      "is_reachable": true
+    },
+    "active_session_id": "1778038609919",
+    "pending_session_stop": null,
+    "last_successful_upload": null,
+    "diagnostics_status": {
+      "enabled": true,
+      "enabledUntil": 1778212481541,
+      "source": "native",
+      "path": "/data/user/0/com.antoalex07.ddcmarketingmobile/files/location_diagnostics.jsonl"
+    },
+    "foreground_permission": {
+      "android": {
+        "accuracy": "none"
+      },
+      "canAskAgain": true,
+      "status": "denied",
+      "expires": "never",
+      "granted": false
+    },
+    "background_permission": {
+      "android": null,
+      "canAskAgain": true,
+      "status": "denied",
+      "expires": "never",
+      "granted": false
+    },
+    "location_services_enabled": true,
+    "provider_status": {
+      "backgroundModeEnabled": true,
+      "gpsAvailable": true,
+      "locationServicesEnabled": true,
+      "networkAvailable": true,
+      "passiveAvailable": true
+    }
+  },
+  "screen_log": [
+    {
+      "timestamp": "2026-05-07T04:54:28.186Z",
+      "message": "Read 176 location diagnostics",
+      "details": null
+    },
+    {
+      "timestamp": "2026-05-07T04:54:22.944Z",
+      "message": "Read 38 native crash logs",
+      "details": null
+    },
+    {
+      "timestamp": "2026-05-07T04:54:16.941Z",
+      "message": "Debug screen opened",
+      "details": null
+    }
+  ],
+  "native_crash_logs_count": 38,
+  "native_crash_logs": [
+    {
+      "timestamp": "2026-05-07T04:54:03.249Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:35.057Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+"message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:34.526Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:33.233Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tatexpo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:27.879Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:27.458Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:24.071Z",
+"platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:15.082Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:14.643Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tatg5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:53:09.037Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:52:21.047Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+"device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:51:42.982Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:46:58.082Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-07T04:46:57.573Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tatcom.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T09:53:59.357Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T08:33:35.235Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+"app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T07:38:31.804Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T07:38:20.667Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T06:10:02.952Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(NativeMethod)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T05:49:32.856Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T05:47:55.077Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+"app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T04:51:12.149Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T04:07:49.971Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "y3.h",
+      "message": "java.lang.SecurityException: uid 10528 does not have any of [android.permission.ACCESS_FINE_LOCATION, android.permission.ACCESS_COARSE_LOCATION].",
+      "stack": "y3.h: java.lang.SecurityException: uid 10528 does not have any of [android.permission.ACCESS_FINE_LOCATION, android.permission.ACCESS_COARSE_LOCATION].\n\tat y3.z.i(SourceFile:22)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didReceiveBroadcast$lambda$2(SourceFile:6)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.b(SourceFile:1)\n\tat expo.modules.location.taskConsumers.c.a(SourceFile:1)\n\tat y3.p.run(SourceFile:22)\n\tat android.os.Handler.handleCallback(Handler.java:959)\n\tat android.os.Handler.dispatchMessage(Handler.java:100)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.SecurityException: uid 10528 does not have any of [android.permission.ACCESS_FINE_LOCATION, android.permission.ACCESS_COARSE_LOCATION].\n\tat android.os.Parcel.createExceptionOrNull(Parcel.java:3255)\n\tat android.os.Parcel.createException(Parcel.java:3239)\n\tat android.os.Parcel.readException(Parcel.java:3222)\n\tat android.os.Parcel.readException(Parcel.java:3164)\n\tat t3.a.e(SourceFile:11)\n\tat t3.t0.w(SourceFile:13)\n\tat t3.M.o0(SourceFile:23)\n\tat t3.h.accept(SourceFile:14)\n\tat com.google.android.gms.common.api.internal.z.b(SourceFile:7)\n\tat com.google.android.gms.common.api.internal.C.c(SourceFile:9)\n\tat com.google.android.gms.common.api.internal.q.m(SourceFile:10)\n\tat com.google.android.gms.common.api.internal.q.o(SourceFile:23)\n\tat com.google.android.gms.common.api.internal.q.i(SourceFile:30)\n\tat com.google.android.gms.common.api.internal.q.j(SourceFile:78)\n\tat com.google.android.gms.common.api.internal.q.e(SourceFile:17)\n\tatj3.E.e(SourceFile:3)\n\tat j3.X.g(SourceFile:113)\n\tat j3.M.a(SourceFile:7)\n\tat j3.U.c(SourceFile:45)\n\tat j3.T.handleMessage(SourceFile:255)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.os.HandlerThread.run(HandlerThread.java:85)\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T03:59:25.906Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    },
+    {
+      "timestamp": "2026-05-06T03:59:13.812Z",
+      "platform": "android",
+      "type": "uncaught_exception",
+      "is_fatal": true,
+      "thread": "main",
+      "name": "java.lang.RuntimeException",
+      "message": "java.lang.NullPointerException",
+      "stack": "java.lang.RuntimeException: java.lang.NullPointerException\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:172)\n\tat android.os.Handler.dispatchMessage(Handler.java:107)\n\tat android.os.Looper.loopOnce(Looper.java:249)\n\tat android.os.Looper.loop(Looper.java:337)\n\tat android.app.ActivityThread.main(ActivityThread.java:9469)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:636)\n\tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1005)\nCaused by: java.lang.NullPointerException\n\tat g5.j.b(SourceFile:127)\n\tat g5.b.g(SourceFile:3)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.executeTaskWithLocationBundles(SourceFile:26)\n\tat expo.modules.location.taskConsumers.LocationTaskConsumer.didExecuteJob(SourceFile:76)\n\tat g5.j.B(SourceFile:65)\n\tat expo.modules.taskManager.TaskJobService.onStartJob(SourceFile:10)\n\tat android.app.job.JobService$1.onStartJob(JobService.java:118)\n\tat android.app.job.JobServiceEngine$JobHandler.handleMessage(JobServiceEngine.java:168)\n\t... 7 more\n",
+      "app_version": "1.0.2",
+      "app_build": 3,
+      "device_model": "2312FRAFDI",
+      "device_manufacturer": "Xiaomi",
+      "os_version": "15",
+      "sdk_int": 35
+    }
+  ],
+  "location_diagnostics_count": 178,
+"location_diagnostics": [
+    {
+      "timestamp": "2026-05-07T04:54:37.195Z",
+      "source": "debug_screen",
+      "event": "debug_snapshot",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "captured_at": "2026-05-07T04:54:37.142Z",
+        "app_version": "1.0.2",
+        "patch_level": "location-job-diagnostics-v2",
+        "platform": "android",
+        "platform_version": "35",
+        "location_task_name": "background-location-task",
+        "task_defined": true,
+        "task_manager_available": true,
+        "tracking_started": true,
+        "unsynced_location_count": 113,
+        "network": {
+          "type": "cellular",
+          "is_connected": true,
+          "is_reachable": true
+        },
+        "active_session_id": "1778038609919",
+        "pending_session_stop": null,
+        "last_successful_upload": null,
+        "diagnostics_status": {
+          "enabled": true,
+          "enabledUntil": 1778212481541,
+          "source": "native",
+          "path": "/data/user/0/com.antoalex07.ddcmarketingmobile/files/location_diagnostics.jsonl"
+        },
+        "foreground_permission": {
+          "android": {
+            "accuracy": "none"
+          },
+          "canAskAgain": true,
+          "status": "denied",
+          "expires": "never",
+          "granted": false
+        },
+        "background_permission": {
+          "android": null,
+          "canAskAgain": true,
+          "status": "denied",
+          "expires": "never",
+          "granted": false
+        },
+        "location_services_enabled": true,
+        "provider_status": {
+          "backgroundModeEnabled": true,
+          "gpsAvailable": true,
+          "locationServicesEnabled": true,
+          "networkAvailable": true,
+          "passiveAvailable": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T04:54:28.616Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T04:54:28.186Z",
+        "message": "Read 176 location diagnostics",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T04:54:23.048Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T04:54:22.944Z",
+        "message": "Read 38 native crash logs",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T04:54:17.155Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T04:54:16.941Z",
+        "message": "Debug screen opened",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:59:24.424Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:59:24.371Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+"platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:59:19.418Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:59:19.347Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:58:56.139Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:58:56.093Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:58:51.151Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:58:51.090Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+"patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:46.234Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:46.195Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:41.185Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:41.146Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:35.815Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:35.768Z",
+      "source": "LocationTask",
+      "event": "task_received",
+"app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:30.807Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:30.751Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:09.849Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:57:09.817Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:59.409Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:59.373Z",
+      "source": "LocationTask",
+"event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:31.186Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:31.157Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:25.776Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:25.758Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:20.602Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:20.584Z",
+"source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:19.559Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:56:19.543Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:45.565Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:55:45.415Z",
+        "message": "Debug report copied to clipboard",
+        "details": {
+          "characters": 98824
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:45.046Z",
+      "source": "debug_screen",
+      "event": "debug_snapshot",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "captured_at": "2026-05-07T03:55:44.955Z",
+        "app_version": "1.0.2",
+        "patch_level": "location-job-diagnostics-v2",
+        "platform": "android",
+        "platform_version": "35",
+        "location_task_name": "background-location-task",
+        "task_defined": true,
+        "network": {
+          "type": "wifi",
+          "is_connected": true,
+          "is_reachable": true
+        },
+        "task_manager_available": true,
+        "tracking_started": true,
+        "active_session_id": "1778038609919",
+        "pending_session_stop": null,
+        "last_successful_upload": null,
+        "diagnostics_status": {
+          "enabled": true,
+          "enabledUntil": 1778212481541,
+          "source": "native",
+          "path": "/data/user/0/com.antoalex07.ddcmarketingmobile/files/location_diagnostics.jsonl"
+        },
+        "unsynced_location_count": 99,
+        "foreground_permission": {
+          "android": {
+            "accuracy": "fine"
+          },
+          "canAskAgain": true,
+"status": "granted",
+          "expires": "never",
+          "granted": true
+        },
+        "background_permission": {
+          "android": null,
+          "canAskAgain": true,
+          "status": "granted",
+          "expires": "never",
+          "granted": true
+        },
+        "location_services_enabled": true,
+        "provider_status": {
+          "backgroundModeEnabled": true,
+          "gpsAvailable": true,
+          "locationServicesEnabled": true,
+          "networkAvailable": true,
+          "passiveAvailable": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:42.325Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:55:42.161Z",
+        "message": "Read 143 location diagnostics",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:41.676Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:55:41.590Z",
+        "message": "Read 24 native crash logs",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:40.176Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:40.148Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:32.649Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:32.630Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+"has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:32.426Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:32.391Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:26.827Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:26.809Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:21.819Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:21.771Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+"has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:12.281Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:12.250Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:07.518Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:55:07.450Z",
+        "message": "Read 129 location diagnostics",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:06.962Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:55:06.913Z",
+        "message": "Read 24 native crash logs",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:06.161Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:06.128Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:00.752Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+"platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:55:00.700Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:59.530Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:54:59.476Z",
+        "message": "Debug report copied to clipboard",
+        "details": {
+          "characters": 97974
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:59.319Z",
+      "source": "debug_screen",
+      "event": "debug_snapshot",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "captured_at": "2026-05-07T03:54:59.306Z",
+        "app_version": "1.0.2",
+        "patch_level": "location-job-diagnostics-v2",
+        "platform": "android",
+        "platform_version": "35",
+        "location_task_name": "background-location-task",
+        "task_defined": true,
+        "network": {
+          "type": "wifi",
+          "is_connected": true,
+          "is_reachable": true
+        },
+        "task_manager_available": true,
+        "tracking_started": true,
+        "active_session_id": "1778038609919",
+        "foreground_permission": {
+          "android": {
+            "accuracy": "fine"
+          },
+          "canAskAgain": true,
+          "status": "granted",
+          "expires": "never",
+          "granted": true
+        },
+        "background_permission": {
+          "android": null,
+          "canAskAgain": true,
+          "status": "granted",
+          "expires": "never",
+          "granted": true
+        },
+        "pending_session_stop": null,
+        "last_successful_upload": null,
+        "unsynced_location_count": 91,
+        "location_services_enabled": true,
+        "diagnostics_status": {
+          "enabled": true,
+          "enabledUntil": 1778212481541,
+          "source": "native",
+          "path": "/data/user/0/com.antoalex07.ddcmarketingmobile/files/location_diagnostics.jsonl"
+        },
+        "provider_status": {
+          "backgroundModeEnabled": true,
+          "gpsAvailable": true,
+          "locationServicesEnabled": true,
+          "networkAvailable": true,
+          "passiveAvailable": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:55.653Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+"locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:55.620Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:50.330Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:50.266Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:45.994Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:54:45.901Z",
+        "message": "Read 117 location diagnostics",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:45.323Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:45.183Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+"timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:43.438Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:54:43.164Z",
+        "message": "Read 24 native crash logs",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:41.857Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:54:41.781Z",
+        "message": "Session diagnostics enabled for 24 hours",
+        "details": {
+          "tracking_started": true,
+          "active_session_id": "1778038609919",
+          "unsynced_location_count": 88,
+          "task_defined": true,
+          "task_manager_available": true,
+          "location_services_enabled": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:41.769Z",
+      "source": "debug_screen",
+      "event": "debug_snapshot",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "captured_at": "2026-05-07T03:54:41.588Z",
+        "app_version": "1.0.2",
+        "patch_level": "location-job-diagnostics-v2",
+        "platform": "android",
+        "platform_version": "35",
+        "location_task_name": "background-location-task",
+        "task_defined": true,
+        "task_manager_available": true,
+        "tracking_started": true,
+        "network": {
+          "type": "wifi",
+          "is_connected": true,
+          "is_reachable": true
+        },
+        "active_session_id": "1778038609919",
+        "pending_session_stop": null,
+        "last_successful_upload": null,
+        "foreground_permission": {
+          "android": {
+            "accuracy": "fine"
+          },
+          "canAskAgain": true,
+          "status": "granted",
+          "expires": "never",
+          "granted": true
+        },
+        "background_permission": {
+          "android": null,
+          "canAskAgain": true,
+          "status": "granted",
+          "expires": "never",
+          "granted": true
+        },
+        "location_services_enabled": true,
+        "provider_status": {
+          "backgroundModeEnabled": true,
+          "gpsAvailable": true,
+          "locationServicesEnabled": true,
+          "networkAvailable": true,
+          "passiveAvailable": true
+        },
+        "diagnostics_status": {
+          "enabled": true,
+          "enabledUntil": 1778212481541,
+          "source": "native",
+          "path": "/data/user/0/com.antoalex07.ddcmarketingmobile/files/location_diagnostics.jsonl"
+        },
+        "unsynced_location_count": 88
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:41.566Z",
+      "source": "debug_screen",
+      "event": "session_debug_started",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "ttl_hours": 24
+      }
+    },
+    {
+      "timestamp": "2026-05-07T03:54:26.737Z",
+      "source": "debug_screen",
+      "event": "debug_screen_log",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "timestamp": "2026-05-07T03:54:26.404Z",
+        "message": "Debug screen opened",
+        "details": null
+      }
+    },
+    {
+      "timestamp": "2026-05-06T03:36:56.778Z",
+"source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1778038609919,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-06T03:36:56.755Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-05T08:11:04.449Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1777968065965,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-05T08:11:04.432Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-05T08:10:59.618Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1777968065965,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    },
+    {
+      "timestamp": "2026-05-05T08:10:59.601Z",
+      "source": "LocationTask",
+      "event": "task_received",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "has_payload": true,
+        "has_error": false,
+        "data_type": "object",
+        "has_locations_array": true,
+        "locations_length": 1,
+        "first_location": {
+          "valid_object": true,
+          "has_coords": true,
+          "has_latitude": true,
+          "has_longitude": true,
+          "has_accuracy": true,
+          "has_speed": true,
+          "has_heading": true,
+          "timestamp_type": "number",
+          "timestamp_valid": true
+        }
+      }
+    },
+{
+      "timestamp": "2026-05-05T08:10:54.988Z",
+      "source": "LocationTask",
+      "event": "task_batch_complete",
+      "app_version": "1.0.2",
+      "patch_level": "location-job-diagnostics-v2",
+      "platform": "android",
+      "platform_version": "35",
+      "details": {
+        "consecutive_failures": 0,
+        "session_id": 1777968065965,
+        "locations_received": 1,
+        "locations_inserted": 1,
+        "malformed_locations": 0
+      }
+    }
+  ],
+  "queued_error_logs_count": 0,
+  "queued_error_logs": [],
+  "unsynced_location_count": 113,
+  "unsynced_location_preview": [
+    {
+      "id": 1,
+      "session_id": 1777968065965,
+      "latitude": 9.9415922,
+      "longitude": 76.3470091,
+      "accuracy": 100,
+      "speed": 0,
+      "heading": 0,
+      "timestamp": "2026-05-05T07:55:01.838Z",
+      "synced": 0
+    },
+    {
+      "id": 2,
+      "session_id": 1777968065965,
+      "latitude": 9.9415839,
+      "longitude": 76.3469325,
+      "accuracy": 40.79899978637695,
+      "speed": 0,
+      "heading": 0,
+      "timestamp": "2026-05-05T08:01:06.946Z",
+      "synced": 0
+    },
+    {
+      "id": 3,
+      "session_id": 1777968065965,
+      "latitude": 9.9416005,
+      "longitude": 76.3469947,
+      "accuracy": 58.23400115966797,
+      "speed": 0.35770297050476074,
+      "heading": 74.83272552490234,
+      "timestamp": "2026-05-05T08:01:12.333Z",
+      "synced": 0
+    },
+    {
+      "id": 4,
+      "session_id": 1777968065965,
+      "latitude": 9.9416102,
+      "longitude": 76.3470324,
+      "accuracy": 58.22200012207031,
+      "speed": 0.6505002379417419,
+      "heading": 75.3580322265625,
+      "timestamp": "2026-05-05T08:01:17.383Z",
+      "synced": 0
+    },
+    {
+      "id": 5,
+      "session_id": 1777968065965,
+      "latitude": 9.9420454,
+      "longitude": 76.3468601,
+      "accuracy": 19.29199981689453,
+      "speed": 0.2884959280490875,
+      "heading": 334.7658996582031,
+      "timestamp": "2026-05-05T08:01:25.838Z",
+      "synced": 0
+    },
+    {
+      "id": 6,
+      "session_id": 1777968065965,
+      "latitude": 9.9418629,
+      "longitude": 76.346831,
+      "accuracy": 5.400000095367432,
+      "speed": 0.015364325605332851,
+      "heading": 0,
+      "timestamp": "2026-05-05T08:01:30.838Z",
+      "synced": 0
+    },
+    {
+      "id": 7,
+      "session_id": 1777968065965,
+      "latitude": 9.9417491,
+      "longitude": 76.3468428,
+      "accuracy": 6.800000190734863,
+      "speed": 0.21116723120212555,
+      "heading": 176.48907470703125,
+      "timestamp": "2026-05-05T08:01:46.837Z",
+      "synced": 0
+    },
+    {
+      "id": 8,
+      "session_id": 1777968065965,
+      "latitude": 9.9417477,
+      "longitude": 76.3468428,
+      "accuracy": 8.47700023651123,
+      "speed": 0.08053936809301376,
+      "heading": 0,
+      "timestamp": "2026-05-05T08:01:51.915Z",
+      "synced": 0
+    },
+    {
+      "id": 9,
+      "session_id": 1777968065965,
+      "latitude": 9.9417481,
+      "longitude": 76.3468429,
+      "accuracy": 9.0600004196167,
+      "speed": 0.47091400623321533,
+      "heading": 270,
+      "timestamp": "2026-05-05T08:01:52.216Z",
+      "synced": 0
+    },
+    {
+      "id": 10,
+      "session_id": 1777968065965,
+      "latitude": 9.9417433,
+      "longitude": 76.3468312,
+      "accuracy": 52.972999572753906,
+      "speed": 2.118957757949829,
+      "heading": 201.80258178710938,
+      "timestamp": "2026-05-05T08:01:58.531Z",
+      "synced": 0
+    },
+    {
+      "id": 11,
+      "session_id": 1777968065965,
+      "latitude": 9.9417182,
+      "longitude": 76.3468291,
+      "accuracy": 54.470001220703125,
+      "speed": 2.186495304107666,
+      "heading": 201.29718017578125,
+      "timestamp": "2026-05-05T08:01:58.932Z",
+      "synced": 0
+    },
+    {
+      "id": 12,
+      "session_id": 1777968065965,
+      "latitude": 9.941652,
+"longitude": 76.3468108,
+      "accuracy": 66.93299865722656,
+      "speed": 1.7274494171142578,
+      "heading": 96.04055786132812,
+      "timestamp": "2026-05-05T08:02:03.943Z",
+      "synced": 0
+    },
+    {
+      "id": 13,
+      "session_id": 1777968065965,
+      "latitude": 9.9418117,
+      "longitude": 76.3468978,
+      "accuracy": 14.418999671936035,
+      "speed": 0.2258492261171341,
+      "heading": 62.526039123535156,
+      "timestamp": "2026-05-05T08:02:08.856Z",
+      "synced": 0
+    },
+    {
+      "id": 14,
+      "session_id": 1777968065965,
+      "latitude": 9.9418061,
+      "longitude": 76.3469889,
+      "accuracy": 8.553000450134277,
+      "speed": 0.33097416162490845,
+      "heading": 47.46091079711914,
+      "timestamp": "2026-05-05T08:02:23.903Z",
+      "synced": 0
+    },
+    {
+      "id": 15,
+      "session_id": 1777968065965,
+      "latitude": 9.9418123,
+      "longitude": 76.3469956,
+      "accuracy": 7.873000144958496,
+      "speed": 0.0840739756822586,
+      "heading": 0,
+      "timestamp": "2026-05-05T08:02:28.914Z",
+      "synced": 0
+    },
+    {
+      "id": 16,
+      "session_id": 1777968065965,
+      "latitude": 9.9417767,
+      "longitude": 76.3469936,
+      "accuracy": 8.081999778747559,
+      "speed": 0.19331470131874084,
+      "heading": 323.39520263671875,
+      "timestamp": "2026-05-05T08:02:48.863Z",
+      "synced": 0
+    },
+    {
+      "id": 17,
+      "session_id": 1777968065965,
+      "latitude": 9.9417795,
+      "longitude": 76.3469921,
+      "accuracy": 10.361000061035156,
+      "speed": 0.2663792669773102,
+      "heading": 318.9850769042969,
+      "timestamp": "2026-05-05T08:02:53.875Z",
+      "synced": 0
+    },
+    {
+      "id": 18,
+      "session_id": 1777968065965,
+      "latitude": 9.9417672,
+      "longitude": 76.346989,
+      "accuracy": 10.73799991607666,
+      "speed": 0.19255173206329346,
+      "heading": 288.1120300292969,
+      "timestamp": "2026-05-05T08:03:08.910Z",
+      "synced": 0
+    },
+    {
+      "id": 19,
+      "session_id": 1777968065965,
+      "latitude": 9.9417698,
+      "longitude": 76.3469813,
+      "accuracy": 12.293000221252441,
+      "speed": 0.1991514265537262,
+      "heading": 297.25982666015625,
+      "timestamp": "2026-05-05T08:03:13.921Z",
+      "synced": 0
+    },
+    {
+      "id": 20,
+      "session_id": 1777968065965,
+      "latitude": 9.9417182,
+      "longitude": 76.3469558,
+      "accuracy": 11.154000282287598,
+      "speed": 0.1562044322490692,
+      "heading": 251.28793334960938,
+      "timestamp": "2026-05-05T08:03:23.845Z",
+      "synced": 0
+    }
+  ]
+}

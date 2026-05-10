@@ -101,6 +101,11 @@ tasks.register("verifyExpoLocationPatch") {
 
         def source = taskConsumerFile.getText('UTF-8')
         def requiredSnippets = [
+                'Manifest.permission.ACCESS_FINE_LOCATION',
+                'Manifest.permission.ACCESS_COARSE_LOCATION',
+                'job_skipped_missing_permission',
+                'broadcast_skipped_missing_permission',
+                'removePendingLocationUpdatesSafely("job_missing_permission")',
                 'val persistableCoordsBundle = persistableLocationBundle.getPersistableBundle("coords")',
                 'if (persistableCoordsBundle == null)',
                 'Log.w(TAG, "Skipping malformed location bundle with missing coords")',
