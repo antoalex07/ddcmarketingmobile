@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { insertPoint } from '../db/locationDB';
 import { diagnosticsService } from './diagnosticsService';
+import { checkLocationPermissions } from '../utils/locationPermissions';
 import { LOCATION_TASK_NAME } from './locationTaskConstants';
 
 const SESSION_ID_KEY = 'active_session_id';
@@ -127,7 +128,7 @@ const parseLocationPayload = (location, index) => {
 };
 
 const stopTaskSafely = async (reason) => {
-  console.error(`[LocationTask] ${reason}`);
+  console.warn(`[LocationTask] ${reason}`);
   recordLocationDiagnostic(
     'task_stop_requested',
     {
@@ -139,7 +140,7 @@ const stopTaskSafely = async (reason) => {
   try {
     await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
   } catch (stopError) {
-    console.error('[LocationTask] Failed to stop location updates:', stopError);
+    console.warn('[LocationTask] Failed to stop location updates:', stopError);
     recordLocationDiagnostic(
       'task_stop_failed',
       {
@@ -152,193 +153,239 @@ const stopTaskSafely = async (reason) => {
 };
 
 TaskManager.defineTask(LOCATION_TASK_NAME, async (taskPayload) => {
-  const { data, error } = taskPayload || {};
-  const diagnosticsEnabled = await diagnosticsService
-    .isLocationDiagnosticsEnabled()
-    .catch(() => false);
+  try {
+    const { data, error } = taskPayload || {};
+    const diagnosticsEnabled = await diagnosticsService
+      .isLocationDiagnosticsEnabled()
+      .catch(() => false);
 
-  if (diagnosticsEnabled) {
-    recordLocationDiagnostic('task_received', summarizeTaskPayload(taskPayload));
-  }
-
-  if (error) {
-    consecutiveFailures++;
-    console.error('[LocationTask] Error:', error);
-    recordLocationDiagnostic(
-      'task_error_payload',
-      {
-        error: getErrorDetails(error),
-      },
-      { force: true }
-    );
-
-    // Stop task after too many consecutive errors
-    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      await stopTaskSafely('Too many consecutive failures, stopping task');
+    if (diagnosticsEnabled) {
+      recordLocationDiagnostic('task_received', summarizeTaskPayload(taskPayload));
     }
-    return;
-  }
 
-  if (!data || typeof data !== 'object') {
-    consecutiveFailures++;
-    console.error('[LocationTask] Invalid task payload: expected object', {
-      payloadType: typeof data,
-    });
-    recordLocationDiagnostic(
-      'task_invalid_data',
-      {
-        payload_summary: summarizeTaskPayload(taskPayload),
-      },
-      { force: true }
-    );
-
-    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      await stopTaskSafely('Too many consecutive failures from invalid payloads, stopping task');
-    }
-    return;
-  }
-
-  const locations = Array.isArray(data.locations) ? data.locations : null;
-  if (!locations || locations.length === 0) {
-    consecutiveFailures++;
-    console.error('[LocationTask] Invalid task payload: missing or empty locations array', {
-      locationsType: typeof data.locations,
-      locationsLength: Array.isArray(data.locations) ? data.locations.length : null,
-    });
-    recordLocationDiagnostic(
-      'task_invalid_locations_array',
-      {
-        payload_summary: summarizeTaskPayload(taskPayload),
-      },
-      { force: true }
-    );
-
-    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      await stopTaskSafely('Too many consecutive failures from invalid location arrays, stopping task');
-    }
-    return;
-  }
-
-  // Validate session exists before writing locations
-  const sessionIdStr = await AsyncStorage.getItem(SESSION_ID_KEY);
-  
-  if (!sessionIdStr || sessionIdStr === 'null' || sessionIdStr === 'undefined') {
-    consecutiveFailures++;
-    console.error('[LocationTask] No active session ID - task running without session');
-    recordLocationDiagnostic(
-      'task_missing_session',
-      {
-        locations_length: locations.length,
-        stored_session_id: sessionIdStr,
-      },
-      { force: true }
-    );
-
-    // Stop task if running without a session
-    if (consecutiveFailures >= 3) {
-      await stopTaskSafely('Stopping task - no active session');
-    }
-    return;
-  }
-
-  const sessionId = parseInt(sessionIdStr, 10);
-  
-  if (Number.isNaN(sessionId) || sessionId <= 0) {
-    consecutiveFailures++;
-    console.error('[LocationTask] Invalid session ID format:', sessionIdStr);
-    recordLocationDiagnostic(
-      'task_invalid_session',
-      {
-        stored_session_id: sessionIdStr,
-      },
-      { force: true }
-    );
-    return;
-  }
-
-  let malformedLocationCount = 0;
-  let insertedLocationCount = 0;
-
-  for (const [index, location] of locations.entries()) {
-    const parsedLocation = parseLocationPayload(location, index);
-    if (!parsedLocation.valid) {
-      malformedLocationCount++;
-      console.error('[LocationTask] Skipping malformed location payload', {
-        reason: parsedLocation.reason,
-      });
+    if (error) {
+      consecutiveFailures++;
+      console.warn('[LocationTask] Error in task payload:', error);
       recordLocationDiagnostic(
-        'task_malformed_location',
+        'task_error_payload',
         {
-          reason: parsedLocation.reason,
-          location_summary: summarizeLocation(location),
+          error: getErrorDetails(error),
         },
         { force: true }
       );
-      continue;
+
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        await stopTaskSafely('Too many consecutive failures, stopping task');
+      }
+      return;
     }
 
-    let retries = 3;
-    let inserted = false;
+    // Permission check at task start to prevent native exceptions
+    const permissionStatus = await checkLocationPermissions().catch(() => ({
+      foreground: false,
+      background: false,
+      fullyGranted: false,
+    }));
 
-    while (retries > 0 && !inserted) {
-      try {
-        await insertPoint({
-          session_id: sessionId,
-          latitude: parsedLocation.point.latitude,
-          longitude: parsedLocation.point.longitude,
-          accuracy: parsedLocation.point.accuracy,
-          speed: parsedLocation.point.speed,
-          heading: parsedLocation.point.heading,
-          timestamp: parsedLocation.point.timestamp
+    if (!permissionStatus.fullyGranted) {
+      consecutiveFailures++;
+      console.warn('[LocationTask] Permissions denied during task execution', {
+        foreground: permissionStatus.foreground,
+        background: permissionStatus.background,
+      });
+      recordLocationDiagnostic(
+        'task_permissions_denied',
+        {
+          foreground: permissionStatus.foreground,
+          background: permissionStatus.background,
+        },
+        { force: true }
+      );
+
+      // Stop tracking immediately to prevent repeated crashes
+      await stopTaskSafely('Permissions were revoked; stopping tracking');
+      return;
+    }
+
+    if (!data || typeof data !== 'object') {
+      consecutiveFailures++;
+      console.warn('[LocationTask] Invalid task payload: expected object', {
+        payloadType: typeof data,
+      });
+      recordLocationDiagnostic(
+        'task_invalid_data',
+        {
+          payload_summary: summarizeTaskPayload(taskPayload),
+        },
+        { force: true }
+      );
+
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        await stopTaskSafely('Too many consecutive failures from invalid payloads, stopping task');
+      }
+      return;
+    }
+
+    const locations = Array.isArray(data.locations) ? data.locations : null;
+    if (!locations || locations.length === 0) {
+      consecutiveFailures++;
+      console.warn('[LocationTask] Invalid task payload: missing or empty locations array', {
+        locationsType: typeof data.locations,
+        locationsLength: Array.isArray(data.locations) ? data.locations.length : null,
+      });
+      recordLocationDiagnostic(
+        'task_invalid_locations_array',
+        {
+          payload_summary: summarizeTaskPayload(taskPayload),
+        },
+        { force: true }
+      );
+
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        await stopTaskSafely('Too many consecutive failures from invalid location arrays, stopping task');
+      }
+      return;
+    }
+
+    // Validate session exists before writing locations
+    const sessionIdStr = await AsyncStorage.getItem(SESSION_ID_KEY);
+
+    if (!sessionIdStr || sessionIdStr === 'null' || sessionIdStr === 'undefined') {
+      consecutiveFailures++;
+      console.warn('[LocationTask] No active session ID - task running without session');
+      recordLocationDiagnostic(
+        'task_missing_session',
+        {
+          locations_length: locations.length,
+          stored_session_id: sessionIdStr,
+        },
+        { force: true }
+      );
+
+      if (consecutiveFailures >= 3) {
+        await stopTaskSafely('Stopping task - no active session');
+      }
+      return;
+    }
+
+    const sessionId = parseInt(sessionIdStr, 10);
+
+    if (Number.isNaN(sessionId) || sessionId <= 0) {
+      consecutiveFailures++;
+      console.warn('[LocationTask] Invalid session ID format:', sessionIdStr);
+      recordLocationDiagnostic(
+        'task_invalid_session',
+        {
+          stored_session_id: sessionIdStr,
+        },
+        { force: true }
+      );
+      return;
+    }
+
+    let malformedLocationCount = 0;
+    let insertedLocationCount = 0;
+
+    for (const [index, location] of locations.entries()) {
+      const parsedLocation = parseLocationPayload(location, index);
+      if (!parsedLocation.valid) {
+        malformedLocationCount++;
+        console.warn('[LocationTask] Skipping malformed location payload', {
+          reason: parsedLocation.reason,
         });
-        inserted = true;
-        insertedLocationCount++;
-        consecutiveFailures = 0; // Reset on success
-      } catch (err) {
-        retries--;
+        recordLocationDiagnostic(
+          'task_malformed_location',
+          {
+            reason: parsedLocation.reason,
+            location_summary: summarizeLocation(location),
+          },
+          { force: true }
+        );
+        continue;
+      }
 
-        if (retries > 0) {
-          // Wait 500ms before retrying
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } else {
-          consecutiveFailures++;
-          console.error('[LocationTask] Failed to insert location after retries:', err);
-          recordLocationDiagnostic(
-            'task_insert_failed',
-            {
-              session_id: sessionId,
-              location_index: index,
-              error: getErrorDetails(err),
-            },
-            { force: true }
-          );
+      let retries = 3;
+      let inserted = false;
+
+      while (retries > 0 && !inserted) {
+        try {
+          await insertPoint({
+            session_id: sessionId,
+            latitude: parsedLocation.point.latitude,
+            longitude: parsedLocation.point.longitude,
+            accuracy: parsedLocation.point.accuracy,
+            speed: parsedLocation.point.speed,
+            heading: parsedLocation.point.heading,
+            timestamp: parsedLocation.point.timestamp,
+          });
+          inserted = true;
+          insertedLocationCount++;
+          consecutiveFailures = 0; // Reset on success
+        } catch (err) {
+          retries--;
+
+          if (retries > 0) {
+            // Wait 500ms before retrying
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            consecutiveFailures++;
+            console.warn('[LocationTask] Failed to insert location after retries:', err);
+            recordLocationDiagnostic(
+              'task_insert_failed',
+              {
+                session_id: sessionId,
+                location_index: index,
+                error: getErrorDetails(err),
+              },
+              { force: true }
+            );
+          }
         }
       }
     }
-  }
 
-  if (malformedLocationCount > 0) {
-    if (malformedLocationCount === locations.length) {
-      consecutiveFailures++;
+    if (malformedLocationCount > 0) {
+      if (malformedLocationCount === locations.length) {
+        consecutiveFailures++;
+      }
+
+      console.warn('[LocationTask] Malformed locations skipped from payload batch', {
+        malformedCount: malformedLocationCount,
+        totalCount: locations.length,
+      });
     }
 
-    console.error('[LocationTask] Malformed locations skipped from payload batch', {
-      malformedCount: malformedLocationCount,
-      totalCount: locations.length,
-    });
-  }
+    if (diagnosticsEnabled) {
+      recordLocationDiagnostic('task_batch_complete', {
+        session_id: sessionId,
+        locations_received: locations.length,
+        locations_inserted: insertedLocationCount,
+        malformed_locations: malformedLocationCount,
+      });
+    }
 
-  if (diagnosticsEnabled) {
-    recordLocationDiagnostic('task_batch_complete', {
-      session_id: sessionId,
-      locations_received: locations.length,
-      locations_inserted: insertedLocationCount,
-      malformed_locations: malformedLocationCount,
-    });
-  }
+    // Stop task if too many consecutive failures
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      await stopTaskSafely('Too many consecutive failures, stopping task');
+    }
+  } catch (taskError) {
+    // Catch any uncaught exceptions to prevent native crashes
+    consecutiveFailures++;
+    console.warn('[LocationTask] Uncaught exception in task:', taskError);
+    recordLocationDiagnostic(
+      'task_uncaught_exception',
+      {
+        error: getErrorDetails(taskError),
+      },
+      { force: true }
+    );
 
-  // Stop task if too many consecutive failures
-  if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-    await stopTaskSafely('Too many consecutive failures, stopping task');
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      try {
+        await stopTaskSafely('Uncaught exception - stopping task to prevent crash loop');
+      } catch (cleanupError) {
+        console.warn('[LocationTask] Failed to stop task after exception:', cleanupError);
+      }
+    }
   }
 });
