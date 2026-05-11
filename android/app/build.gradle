@@ -229,6 +229,8 @@ preBuild.dependsOn("verifyExpoLocationPatch")
 }
 
 dependencies {
+    // Play services location for native foreground service
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
