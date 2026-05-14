@@ -383,6 +383,10 @@ const DebugScreen = () => {
     return `[${entry.timestamp}] ${entry.message}${details}`;
   };
 
+  const formatCoordinate = (value) => (
+    typeof value === 'number' && Number.isFinite(value) ? value.toFixed(4) : 'null'
+  );
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>Session Debug</Text>
@@ -453,7 +457,7 @@ const DebugScreen = () => {
           ) : (
             points.map((point, index) => (
               <Text key={index} style={styles.pointText}>
-                #{point.id} | S:{point.session_id} | {Number(point.latitude).toFixed(4)}, {Number(point.longitude).toFixed(4)} | {point.timestamp}
+                #{point.id} | S:{point.session_id} | {formatCoordinate(point.latitude)}, {formatCoordinate(point.longitude)} | {point.timestamp}
               </Text>
             ))
           )}
