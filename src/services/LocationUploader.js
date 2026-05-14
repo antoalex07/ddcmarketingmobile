@@ -18,6 +18,17 @@ let circuitOpenedAt = null;
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
+const hasUploadableCoordinates = (point) => (
+  isFiniteNumber(point?.latitude) &&
+  isFiniteNumber(point?.longitude) &&
+  point.latitude >= -90 &&
+  point.latitude <= 90 &&
+  point.longitude >= -180 &&
+  point.longitude <= 180
+);
+
 const getErrorMessage = (error) => {
   const responseData = error?.response?.data;
 
@@ -154,9 +165,27 @@ export const uploadUnsyncedLocations = async (token) => {
     return { uploaded: 0, failed: 0, terminalSessionError: false };
   }
 
+  const uploadablePoints = unsyncedPoints.filter(hasUploadableCoordinates);
+  const skippedPointIds = unsyncedPoints
+    .filter((point) => !hasUploadableCoordinates(point))
+    .map((point) => point.id);
+
+  if (skippedPointIds.length > 0) {
+    await markAsSynced(skippedPointIds);
+  }
+
+  if (uploadablePoints.length === 0) {
+    return {
+      uploaded: 0,
+      failed: 0,
+      skippedNullLocations: skippedPointIds.length,
+      terminalSessionError: false,
+    };
+  }
+
   // Group points by session_id
   const pointsBySession = {};
-  for (const point of unsyncedPoints) {
+  for (const point of uploadablePoints) {
     const sid = point.session_id;
     if (sid === null) continue; // Skip points without session
     if (!pointsBySession[sid]) {
@@ -199,10 +228,11 @@ export const uploadUnsyncedLocations = async (token) => {
 
             return {
               uploaded,
-              failed: unsyncedPoints.length - uploaded,
+              failed: uploadablePoints.length - uploaded,
               terminalSessionError: true,
               message: getErrorMessage(err) || 'Session is no longer valid for location uploads.',
               status: err?.response?.status ?? null,
+              skippedNullLocations: skippedPointIds.length,
             };
           }
 
@@ -227,5 +257,5 @@ export const uploadUnsyncedLocations = async (token) => {
     }
   }
 
-  return { uploaded, failed, terminalSessionError: false };
+  return { uploaded, failed, skippedNullLocations: skippedPointIds.length, terminalSessionError: false };
 };

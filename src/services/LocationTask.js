@@ -15,6 +15,15 @@ const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(v
 
 const toOptionalNumber = (value) => (isFiniteNumber(value) ? value : null);
 
+const isValidCoordinatePair = (latitude, longitude) => (
+  isFiniteNumber(latitude) &&
+  isFiniteNumber(longitude) &&
+  latitude >= -90 &&
+  latitude <= 90 &&
+  longitude >= -180 &&
+  longitude <= 180
+);
+
 const getErrorDetails = (error) => ({
   name: error?.name || 'Error',
   message: error?.message || String(error || 'Unknown error'),
@@ -82,29 +91,6 @@ const parseLocationPayload = (location, index) => {
     };
   }
 
-  const coords = location.coords;
-  if (!coords || typeof coords !== 'object') {
-    return {
-      valid: false,
-      reason: `location at index ${index} is missing coords`,
-    };
-  }
-
-  const { latitude, longitude } = coords;
-  if (!isFiniteNumber(latitude) || !isFiniteNumber(longitude)) {
-    return {
-      valid: false,
-      reason: `location at index ${index} has invalid latitude/longitude`,
-    };
-  }
-
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    return {
-      valid: false,
-      reason: `location at index ${index} has out-of-range coordinates`,
-    };
-  }
-
   const parsedTimestamp = new Date(location.timestamp);
   if (Number.isNaN(parsedTimestamp.getTime())) {
     return {
@@ -113,17 +99,56 @@ const parseLocationPayload = (location, index) => {
     };
   }
 
+  const coords = location.coords;
+  const hasCoords = coords && typeof coords === 'object';
+  const latitude = hasCoords ? coords.latitude : null;
+  const longitude = hasCoords ? coords.longitude : null;
+  const hasValidCoordinates = isValidCoordinatePair(latitude, longitude);
+
   return {
     valid: true,
     point: {
-      latitude,
-      longitude,
-      accuracy: toOptionalNumber(coords.accuracy),
-      speed: toOptionalNumber(coords.speed),
-      heading: toOptionalNumber(coords.heading),
+      latitude: hasValidCoordinates ? latitude : null,
+      longitude: hasValidCoordinates ? longitude : null,
+      accuracy: hasCoords ? toOptionalNumber(coords.accuracy) : null,
+      speed: hasCoords ? toOptionalNumber(coords.speed) : null,
+      heading: hasCoords ? toOptionalNumber(coords.heading) : null,
       timestamp: parsedTimestamp.toISOString(),
     },
+    coordinatesMissing: !hasValidCoordinates,
+    reason: hasValidCoordinates ? null : `location at index ${index} has unavailable coordinates`,
   };
+};
+
+const insertLocationPointWithRetry = async (point, details = {}) => {
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      await insertPoint(point);
+      return true;
+    } catch (err) {
+      retries--;
+
+      if (retries > 0) {
+        // Wait briefly before retrying a transient database failure.
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } else {
+        consecutiveFailures++;
+        console.error('[LocationTask] Failed to insert location after retries:', err);
+        recordLocationDiagnostic(
+          'task_insert_failed',
+          {
+            ...details,
+            error: getErrorDetails(err),
+          },
+          { force: true }
+        );
+      }
+    }
+  }
+
+  return false;
 };
 
 const stopTaskSafely = async (reason) => {
@@ -162,7 +187,6 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (taskPayload) => {
   }
 
   if (error) {
-    consecutiveFailures++;
     console.error('[LocationTask] Error:', error);
     recordLocationDiagnostic(
       'task_error_payload',
@@ -172,10 +196,47 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (taskPayload) => {
       { force: true }
     );
 
-    // Stop task after too many consecutive errors
+    const sessionIdStr = await AsyncStorage.getItem(SESSION_ID_KEY);
+    const sessionId = parseInt(sessionIdStr, 10);
+
+    if (!Number.isNaN(sessionId) && sessionId > 0) {
+      const inserted = await insertLocationPointWithRetry(
+        {
+          session_id: sessionId,
+          latitude: null,
+          longitude: null,
+          accuracy: null,
+          speed: null,
+          heading: null,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          session_id: sessionId,
+          location_index: null,
+          reason: 'task error payload recorded as null coordinate placeholder',
+        }
+      );
+
+      if (inserted) {
+        consecutiveFailures = 0;
+      }
+      return;
+    }
+
+    consecutiveFailures++;
+    recordLocationDiagnostic(
+      'task_error_without_session',
+      {
+        stored_session_id: sessionIdStr,
+      },
+      { force: true }
+    );
+
+    // Stop task after too many consecutive errors when there is no active session.
     if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
       await stopTaskSafely('Too many consecutive failures, stopping task');
     }
+
     return;
   }
 
@@ -258,6 +319,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (taskPayload) => {
 
   let malformedLocationCount = 0;
   let insertedLocationCount = 0;
+  let nullCoordinateLocationCount = 0;
 
   for (const [index, location] of locations.entries()) {
     const parsedLocation = parseLocationPayload(location, index);
@@ -277,43 +339,37 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (taskPayload) => {
       continue;
     }
 
-    let retries = 3;
-    let inserted = false;
+    if (parsedLocation.coordinatesMissing) {
+      nullCoordinateLocationCount++;
+      recordLocationDiagnostic(
+        'task_null_coordinate_location',
+        {
+          reason: parsedLocation.reason,
+          location_summary: summarizeLocation(location),
+        },
+        { force: true }
+      );
+    }
 
-    while (retries > 0 && !inserted) {
-      try {
-        await insertPoint({
-          session_id: sessionId,
-          latitude: parsedLocation.point.latitude,
-          longitude: parsedLocation.point.longitude,
-          accuracy: parsedLocation.point.accuracy,
-          speed: parsedLocation.point.speed,
-          heading: parsedLocation.point.heading,
-          timestamp: parsedLocation.point.timestamp
-        });
-        inserted = true;
-        insertedLocationCount++;
-        consecutiveFailures = 0; // Reset on success
-      } catch (err) {
-        retries--;
-
-        if (retries > 0) {
-          // Wait 500ms before retrying
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } else {
-          consecutiveFailures++;
-          console.error('[LocationTask] Failed to insert location after retries:', err);
-          recordLocationDiagnostic(
-            'task_insert_failed',
-            {
-              session_id: sessionId,
-              location_index: index,
-              error: getErrorDetails(err),
-            },
-            { force: true }
-          );
-        }
+    const inserted = await insertLocationPointWithRetry(
+      {
+        session_id: sessionId,
+        latitude: parsedLocation.point.latitude,
+        longitude: parsedLocation.point.longitude,
+        accuracy: parsedLocation.point.accuracy,
+        speed: parsedLocation.point.speed,
+        heading: parsedLocation.point.heading,
+        timestamp: parsedLocation.point.timestamp
+      },
+      {
+        session_id: sessionId,
+        location_index: index,
       }
+    );
+
+    if (inserted) {
+      insertedLocationCount++;
+      consecutiveFailures = 0; // Reset on success, including null coordinate placeholders.
     }
   }
 
@@ -334,6 +390,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (taskPayload) => {
       locations_received: locations.length,
       locations_inserted: insertedLocationCount,
       malformed_locations: malformedLocationCount,
+      null_coordinate_locations: nullCoordinateLocationCount,
     });
   }
 

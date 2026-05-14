@@ -375,6 +375,10 @@ const DebugScreen = () => {
     return `[${timestamp}] ${source}:${event} ${detailText.slice(0, 500)}`;
   };
 
+  const formatCoordinate = (value) => (
+    typeof value === 'number' && Number.isFinite(value) ? value.toFixed(4) : 'null'
+  );
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>Debug Screen</Text>
@@ -465,7 +469,7 @@ const DebugScreen = () => {
         <ScrollView style={styles.pointsContainer}>
           {points.map((point, index) => (
             <Text key={index} style={styles.pointText}>
-              #{point.id} | S:{point.session_id} | {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
+              #{point.id} | S:{point.session_id} | {formatCoordinate(point.latitude)}, {formatCoordinate(point.longitude)}
             </Text>
           ))}
         </ScrollView>
