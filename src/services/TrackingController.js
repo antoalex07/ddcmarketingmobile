@@ -145,7 +145,7 @@ export const startTracking = async () => {
   await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
     accuracy: Location.Accuracy.High,
     distanceInterval: 10,
-    timeInterval: 15000,
+    timeInterval: 75000, //here we can adjust the time interval for location updates (currently set to 15 seconds)
     foregroundService: {
       notificationTitle: 'DDC Marketing',
       notificationBody: 'Tracking your work session location',
